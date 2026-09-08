@@ -1,4 +1,107 @@
-<!DOCTYPE html>
+}
+        ).join("");
+
+      moduleEl.innerHTML = `
+        <button class="module-toggle" onclick="toggleModule(${module.id})">
+          <h2 class="module-title">📌 ${module.name}</h2>
+          <span>▼</span>
+        </button>
+        <div class="subjects">
+          ${subjectsHtml}
+        </div>
+      `;
+
+      container.appendChild(moduleEl);
+    }
+  );
+}
+
+/* =====================================================
+   TOGGLE DOS MÓDULOS
+===================================================== */
+
+function toggleModule(moduleId) {
+  const mod = document.getElementById(`module-${moduleId}`);
+  if (mod) {
+    mod.classList.toggle("open");
+  }
+}
+
+/* =====================================================
+   ABRIR E FECHAR PLAYER
+===================================================== */
+
+function openSubject(moduleId, subjectId) {
+  let subObj = null;
+
+  courseData.forEach(m => {
+    const found = m.subjects.find(s => s.id === subjectId);
+    if (found) subObj = found;
+  });
+
+  if (!subObj || !subObj.playlist) {
+    alert("Conteúdo ainda não disponível para esta matéria.");
+    return;
+  }
+
+  activeSubjectId = subjectId;
+
+  const parsed = parseYouTubeInput(subObj.playlist);
+  let embedUrl = "";
+
+  if (parsed.type === "playlist") {
+    embedUrl = `https://www.youtube.com/embed/videoseries?list=${parsed.playlistId}`;
+  } else {
+    embedUrl = `https://www.youtube.com/embed/${parsed.videoId}`;
+  }
+
+  document.getElementById("playerTitle").textContent = subObj.name;
+  document.getElementById("player").src = embedUrl;
+
+  const userProgress = getUserProgress();
+  const currentP = userProgress[subjectId] || 0;
+
+  document.getElementById("simSlider").value = currentP;
+  document.getElementById("simPercentText").textContent = `${currentP}% assistido`;
+  document.getElementById("simControls").style.display = "flex";
+
+  const playerArea = document.getElementById("playerArea");
+  playerArea.classList.add("active");
+  playerArea.scrollIntoView({ behavior: "smooth" });
+}
+
+function closePlayer() {
+  const playerArea = document.getElementById("playerArea");
+  playerArea.classList.remove("active");
+  document.getElementById("player").src = "";
+  activeSubjectId = null;
+}
+
+/* =====================================================
+   ATUALIZAR PROGRESSO DA AULA
+===================================================== */
+
+function updateVideoProgress(val) {
+  if (!activeSubjectId) return;
+
+  document.getElementById("simPercentText").textContent = `${val}% assistido`;
+  setUserProgress(activeSubjectId, val);
+}
+
+/* =====================================================
+   MUDANÇA DE TEMA (CLARO / ESCURO)
+===================================================== */
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", newTheme);
+}
+
+</script>
+
+</body>
+</html><!DOCTYPE html>
 <html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="UTF-8">
