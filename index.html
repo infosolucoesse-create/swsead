@@ -1,10 +1,12 @@
-}
-        ).join("");
+<div class="subjects">
+          ${subjectsHtml}
+        </div>
+      `;
 
       moduleEl.innerHTML = `
         <button class="module-toggle" onclick="toggleModule(${module.id})">
           <h2 class="module-title">📌 ${module.name}</h2>
-       <span class="icon">▼</span>
+          <span class="icon">▼</span>
         </button>
         <div class="subjects">
           ${subjectsHtml}
