@@ -1,114 +1,4 @@
-<script>
-moduleEl.innerHTML = `
-        <button class="module-toggle" onclick="toggleModule(${module.id})">
-          <h2 class="module-title">📌 ${module.name}</h2>
-          <span class="icon">▼</span>
-        </button>
-        <div class="subjects">
-          ${subjectsHtml}
-        </div>
-      `;
-
-      container.appendChild(moduleEl);
-    }
-  );
-}
-
-/* =====================================================
-   TOGGLE DOS MÓDULOS
-===================================================== */
-
-      container.appendChild(moduleEl);
-    }
-  );
-}
-
-/* =====================================================
-   TOGGLE DOS MÓDULOS
-===================================================== */
-
-function toggleModule(moduleId) {
-  const mod = document.getElementById(`module-${moduleId}`);
-  if (mod) {
-    mod.classList.toggle("open");
-  }
-}
-
-/* =====================================================
-   ABRIR E FECHAR PLAYER
-===================================================== */
-
-function openSubject(moduleId, subjectId) {
-  let subObj = null;
-
-  courseData.forEach(m => {
-    const found = m.subjects.find(s => s.id === subjectId);
-    if (found) subObj = found;
-  });
-
-  if (!subObj || !subObj.playlist) {
-    alert("Conteúdo ainda não disponível para esta matéria.");
-    return;
-  }
-
-  activeSubjectId = subjectId;
-
-  const parsed = parseYouTubeInput(subObj.playlist);
-  let embedUrl = "";
-
-  if (parsed.type === "playlist") {
-    embedUrl = `https://www.youtube.com/embed/videoseries?list=${parsed.playlistId}`;
-  } else {
-    embedUrl = `https://www.youtube.com/embed/${parsed.videoId}`;
-  }
-
-  document.getElementById("playerTitle").textContent = subObj.name;
-  document.getElementById("player").src = embedUrl;
-
-  const userProgress = getUserProgress();
-  const currentP = userProgress[subjectId] || 0;
-
-  document.getElementById("simSlider").value = currentP;
-  document.getElementById("simPercentText").textContent = `${currentP}% assistido`;
-  document.getElementById("simControls").style.display = "flex";
-
-  const playerArea = document.getElementById("playerArea");
-  playerArea.classList.add("active");
-  playerArea.scrollIntoView({ behavior: "smooth" });
-}
-
-function closePlayer() {
-  const playerArea = document.getElementById("playerArea");
-  playerArea.classList.remove("active");
-  document.getElementById("player").src = "";
-  activeSubjectId = null;
-}
-
-/* =====================================================
-   ATUALIZAR PROGRESSO DA AULA
-===================================================== */
-
-function updateVideoProgress(val) {
-  if (!activeSubjectId) return;
-
-  document.getElementById("simPercentText").textContent = `${val}% assistido`;
-  setUserProgress(activeSubjectId, val);
-}
-
-/* =====================================================
-   MUDANÇA DE TEMA (CLARO / ESCURO)
-===================================================== */
-
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute("data-theme");
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", newTheme);
-}
-
-</script>
-
-</body>
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -128,7 +18,7 @@ function toggleTheme() {
   --success: #059669;
   --danger: #dc2626;
   --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05),
-             0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            0 8px 10px -6px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
                0 8px 10px -6px rgba(0, 0, 0, 0.1);
   --radius: 12px;
@@ -154,7 +44,7 @@ function toggleTheme() {
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-               Roboto, Helvetica, Arial, sans-serif;
+                Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -651,51 +541,25 @@ header h1 {
 ========================= -->
 
 <div class="modal-overlay" id="loginOverlay">
-
   <div class="modal-card">
-
     <h2>Entrar na Plataforma</h2>
-
-    <p>
-      Acesse com suas credenciais para continuar.
-    </p>
+    <p>Acesse com suas credenciais para continuar.</p>
 
     <form onsubmit="handleLogin(event)">
-
       <div class="form-group">
         <label for="username">Usuário</label>
-
-        <input
-          type="text"
-          id="username"
-          placeholder="Digite seu usuário"
-          required
-        >
+        <input type="text" id="username" placeholder="Digite seu usuário" required>
       </div>
 
       <div class="form-group">
         <label for="password">Senha</label>
-
-        <input
-          type="password"
-          id="password"
-          placeholder="Digite sua senha"
-          required
-        >
+        <input type="password" id="password" placeholder="Digite sua senha" required>
       </div>
 
-      <button type="submit" class="btn-primary">
-        Acessar Curso
-      </button>
-
-      <div class="error-msg" id="loginError">
-        Usuário ou senha incorretos!
-      </div>
-
+      <button type="submit" class="btn-primary">Acessar Curso</button>
+      <div class="error-msg" id="loginError">Usuário ou senha incorretos!</div>
     </form>
-
   </div>
-
 </div>
 
 
@@ -703,72 +567,27 @@ header h1 {
      MODAL CRIAR USUÁRIO
 ========================= -->
 
-<div
-  class="modal-overlay"
-  id="adminModal"
-  style="display:none;"
->
-
+<div class="modal-overlay" id="adminModal" style="display:none;">
   <div class="modal-card">
-
     <h2>Cadastrar Novo Aluno</h2>
-
-    <p>
-      Criar acesso para um novo estudante na plataforma.
-    </p>
+    <p>Criar acesso para um novo estudante na plataforma.</p>
 
     <form onsubmit="handleRegisterUser(event)">
-
       <div class="form-group">
-
-        <label for="newUsername">
-          Novo Usuário
-        </label>
-
-        <input
-          type="text"
-          id="newUsername"
-          placeholder="Ex: aluno1"
-          required
-        >
-
+        <label for="newUsername">Novo Usuário</label>
+        <input type="text" id="newUsername" placeholder="Ex: aluno1" required>
       </div>
 
       <div class="form-group">
-
-        <label for="newPassword">
-          Senha
-        </label>
-
-        <input
-          type="password"
-          id="newPassword"
-          placeholder="Digite a senha"
-          required
-        >
-
+        <label for="newPassword">Senha</label>
+        <input type="password" id="newPassword" placeholder="Digite a senha" required>
       </div>
 
-      <button type="submit" class="btn-primary">
-        Criar Usuário
-      </button>
-
-      <button
-        type="button"
-        class="btn-secondary"
-        onclick="closeAdminModal()"
-      >
-        Cancelar
-      </button>
-
-      <div class="error-msg" id="registerError">
-        Este usuário já existe!
-      </div>
-
+      <button type="submit" class="btn-primary">Criar Usuário</button>
+      <button type="button" class="btn-secondary" onclick="closeAdminModal()">Cancelar</button>
+      <div class="error-msg" id="registerError">Este usuário já existe!</div>
     </form>
-
   </div>
-
 </div>
 
 
@@ -776,72 +595,25 @@ header h1 {
      MODAL GERENCIAR LINK
 ========================= -->
 
-<div
-  class="modal-overlay"
-  id="linkModal"
-  style="display:none;"
->
-
+<div class="modal-overlay" id="linkModal" style="display:none;">
   <div class="modal-card">
-
-    <h2 id="linkModalTitle">
-      Gerenciar Vídeo da Aula
-    </h2>
-
-    <p id="linkModalSub">
-      Informe o ID do vídeo/playlist ou a URL completa do YouTube.
-    </p>
+    <h2 id="linkModalTitle">Gerenciar Vídeo da Aula</h2>
+    <p id="linkModalSub">Informe o ID do vídeo/playlist ou a URL completa do YouTube.</p>
 
     <form onsubmit="handleSaveLink(event)">
-
-      <input
-        type="hidden"
-        id="editSubjectId"
-      >
+      <input type="hidden" id="editSubjectId">
 
       <div class="form-group">
-
-        <label for="videoLinkInput">
-          Link ou ID do Vídeo/Playlist YouTube
-        </label>
-
-        <input
-          type="text"
-          id="videoLinkInput"
-          placeholder="Ex: PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke ou URL do YouTube"
-        >
-
-        <span class="form-hint">
-          Você pode colar o link do YouTube
-          (Vídeo ou Playlist) ou o código ID.
-        </span>
-
+        <label for="videoLinkInput">Link ou ID do Vídeo/Playlist YouTube</label>
+        <input type="text" id="videoLinkInput" placeholder="Ex: PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke ou URL do YouTube">
+        <span class="form-hint">Você pode colar o link do YouTube (Vídeo ou Playlist) ou o código ID.</span>
       </div>
 
-      <button type="submit" class="btn-primary">
-        💾 Salvar Link
-      </button>
-
-      <button
-        type="button"
-        class="btn-danger-outline"
-        onclick="handleDeleteLink()"
-      >
-        🗑️ Remover/Excluir Link
-      </button>
-
-      <button
-        type="button"
-        class="btn-secondary"
-        onclick="closeLinkModal()"
-      >
-        Cancelar
-      </button>
-
+      <button type="submit" class="btn-primary">💾 Salvar Link</button>
+      <button type="button" class="btn-danger-outline" onclick="handleDeleteLink()">🗑️ Remover/Excluir Link</button>
+      <button type="button" class="btn-secondary" onclick="closeLinkModal()">Cancelar</button>
     </form>
-
   </div>
-
 </div>
 
 
@@ -850,62 +622,22 @@ header h1 {
 ========================= -->
 
 <header>
-
   <div class="header-top">
-
     <div class="user-badge">
-
-      <span>
-        Bem-vindo,
-        <strong id="currentUserName">SWS</strong>
-      </span>
-
-      <span
-        class="user-tag"
-        id="userRoleTag"
-      >
-        Administrador
-      </span>
-
+      <span>Bem-vindo, <strong id="currentUserName">SWS</strong></span>
+      <span class="user-tag" id="userRoleTag">Administrador</span>
     </div>
 
     <div class="header-actions">
-
-      <button
-        class="btn-sm"
-        id="btnAdminRegister"
-        onclick="openAdminModal()"
-        style="display:none;"
-      >
-        ➕ Criar Usuário
-      </button>
-
-      <button
-        class="btn-sm"
-        onclick="toggleTheme()"
-      >
-        🌙 Tema
-      </button>
-
-      <button
-        class="btn-sm"
-        onclick="handleLogout()"
-      >
-        🚪 Sair
-      </button>
-
+      <button class="btn-sm" id="btnAdminRegister" onclick="openAdminModal()" style="display:none;">➕ Criar Usuário</button>
+      <button class="btn-sm" onclick="toggleTheme()">🌙 Tema</button>
+      <button class="btn-sm" onclick="handleLogout()">🚪 Sair</button>
     </div>
-
   </div>
 
   <div class="header-content">
-
-    <h1>
-      Curso Básico de Teologia
-    </h1>
-
+    <h1>Curso Básico de Teologia</h1>
   </div>
-
 </header>
 
 
@@ -914,144 +646,45 @@ header h1 {
 ========================= -->
 
 <main class="container">
-
   <div class="dashboard-grid">
-
     <div class="card">
-
       <div class="progress-header">
-
-        <span class="progress-title">
-          Progresso Geral do Curso
-        </span>
-
-        <span
-          class="progress-percent"
-          id="overallPercent"
-        >
-          0%
-        </span>
-
+        <span class="progress-title">Progresso Geral do Curso</span>
+        <span class="progress-percent" id="overallPercent">0%</span>
       </div>
-
       <div class="progress-bar-bg">
-
-        <div
-          class="progress-bar-fill"
-          id="overallBar"
-        ></div>
-
+        <div class="progress-bar-fill" id="overallBar"></div>
       </div>
-
     </div>
-
 
     <div class="card search-box">
-
-      <input
-        type="text"
-        id="searchInput"
-        placeholder="Buscar matéria..."
-        oninput="renderModules()"
-      >
-
+      <input type="text" id="searchInput" placeholder="Buscar matéria..." oninput="renderModules()">
     </div>
-
   </div>
 
-
-  <section
-    class="modules"
-    id="modulesContainer"
-  ></section>
-
+  <section class="modules" id="modulesContainer"></section>
 
   <!-- PLAYER -->
-
-  <section
-    class="player-area"
-    id="playerArea"
-  >
-
+  <section class="player-area" id="playerArea">
     <div class="player-header">
-
-      <h3 id="playerTitle">
-        Aula
-      </h3>
-
-      <button
-        class="btn-sm"
-        style="background:#ef4444; border:none;"
-        onclick="closePlayer()"
-      >
-        ✕ Fechar
-      </button>
-
+      <h3 id="playerTitle">Aula</h3>
+      <button class="btn-sm" style="background:#ef4444; border:none;" onclick="closePlayer()">✕ Fechar</button>
     </div>
-
 
     <div class="video-container">
-
-      <iframe
-        id="player"
-        src=""
-        allow="accelerometer; autoplay; clipboard-write;
-               encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen>
-      </iframe>
-
+      <iframe id="player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
-
 
     <!-- ACOMPANHAMENTO DO VÍDEO -->
-
-    <div
-      class="video-controls-sim"
-      id="simControls"
-      style="display:none;"
-    >
-
-      <div
-        style="display:flex;
-               justify-content:space-between;
-               font-size:13px;
-               font-weight:600;"
-      >
-
-        <span>
-          ⏱️ Progresso da Aula
-        </span>
-
-        <span id="simPercentText">
-          0% assistido
-        </span>
-
+    <div class="video-controls-sim" id="simControls" style="display:none;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span>⏱️ Progresso da Aula</span>
+        <span id="simPercentText">0% assistido</span>
       </div>
-
-
-      <input
-        type="range"
-        min="0"
-        max="100"
-        value="0"
-        class="sim-slider"
-        id="simSlider"
-        oninput="updateVideoProgress(this.value)"
-      >
-
-
-      <span
-        style="font-size:11px;
-               color:var(--text-muted);"
-      >
-        Ajuste a barra acima para acompanhar
-        o percentual assistido da aula.
-      </span>
-
+      <input type="range" min="0" max="100" value="0" class="sim-slider" id="simSlider" oninput="updateVideoProgress(this.value)">
+      <span style="font-size:11px; color:var(--text-muted);">Ajuste a barra acima para acompanhar o percentual assistido da aula.</span>
     </div>
-
   </section>
-
 </main>
 
 
@@ -1062,1436 +695,446 @@ header h1 {
 ===================================================== */
 
 const initialCourseData = [
-
   {
     id: 1,
     name: "Módulo I",
-
     subjects: [
-      {
-        id: "m1_1",
-        name: "Teologia",
-        playlist: null
-      },
-      {
-        id: "m1_2",
-        name: "Trindade",
-        playlist: null
-      },
-      {
-        id: "m1_3",
-        name: "Cristologia",
-        playlist: null
-      },
-      {
-        id: "m1_4",
-        name: "Pneumatologia",
-        playlist: null
-      }
+      { id: "m1_1", name: "Teologia", playlist: null },
+      { id: "m1_2", name: "Trindade", playlist: null },
+      { id: "m1_3", name: "Cristologia", playlist: null },
+      { id: "m1_4", name: "Pneumatologia", playlist: null }
     ]
   },
-
   {
     id: 2,
     name: "Módulo II",
-
     subjects: [
-      {
-        id: "m2_1",
-        name: "Introdução Bíblica",
-        playlist: null
-      },
-      {
-        id: "m2_2",
-        name: "Panorama do AT",
-        playlist: null
-      },
-      {
-        id: "m2_3",
-        name: "Período Interbíblico",
-        playlist: null
-      },
-      {
-        id: "m2_4",
-        name: "Panorama do NT",
-        playlist: null
-      }
+      { id: "m2_1", name: "Introdução Bíblica", playlist: null },
+      { id: "m2_2", name: "Panorama do AT", playlist: null },
+      { id: "m2_3", name: "Período Interbíblico", playlist: null },
+      { id: "m2_4", name: "Panorama do NT", playlist: null }
     ]
   },
-
   {
     id: 3,
     name: "Módulo III",
-
     subjects: [
-      {
-        id: "m3_1",
-        name: "Geografia Bíblica",
-        playlist: null
-      },
-      {
-        id: "m3_2",
-        name: "História de Israel",
-        playlist: null
-      },
-      {
-        id: "m3_3",
-        name: "História da Igreja",
-        playlist: null
-      },
-      {
-        id: "m3_4",
-        name: "Eclesiologia",
-        playlist: null
-      }
+      { id: "m3_1", name: "Geografia Bíblica", playlist: null },
+      { id: "m3_2", name: "História de Israel", playlist: null },
+      { id: "m3_3", name: "História da Igreja", playlist: null },
+      { id: "m3_4", name: "Eclesiologia", playlist: null }
     ]
   },
-
   {
     id: 4,
     name: "Módulo IV",
-
     subjects: [
-      {
-        id: "m4_1",
-        name: "Hermenêutica",
-        playlist: "PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke"
-      },
-      {
-        id: "m4_2",
-        name: "Homilética",
-        playlist: "PLYTvo-pfIcGLsefbBMkuzDippSDowKruJ"
-      },
-      {
-        id: 4,
-        name: "Evangelismo",
-        playlist: "PLYTvo-pfIcGJyW6W3p3nkJqcaeqiMp2Gv"
-      },
-      {
-        id: "m4_4",
-        name: "Missiologia",
-        playlist: "PLYTvo-pfIcGK4Wb1MOFoEg6IObRbS8YxG"
-      }
+      { id: "m4_1", name: "Hermenêutica", playlist: "PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke" },
+      { id: "m4_2", name: "Homilética", playlist: "PLYTvo-pfIcGLsefbBMkuzDippSDowKruJ" },
+      { id: "m4_3", name: "Evangelismo", playlist: "PLYTvo-pfIcGJyW6W3p3nkJqcaeqiMp2Gv" },
+      { id: "m4_4", name: "Missiologia", playlist: "PLYTvo-pfIcGK4Wb1MOFoEg6IObRbS8YxG" }
     ]
   },
-
   {
     id: 5,
     name: "Módulo V",
-
     subjects: [
-      {
-        id: "m5_1",
-        name: "Antropologia",
-        playlist: null
-      },
-      {
-        id: "m5_2",
-        name: "Hamartiologia",
-        playlist: null
-      },
-      {
-        id: "m5_3",
-        name: "Angelologia",
-        playlist: null
-      },
-      {
-        id: "m5_4",
-        name: "Família Cristã",
-        playlist: null
-      }
+      { id: "m5_1", name: "Antropologia", playlist: null },
+      { id: "m5_2", name: "Hamartiologia", playlist: null },
+      { id: "m5_3", name: "Angelologia", playlist: null },
+      { id: "m5_4", name: "Família Cristã", playlist: null }
     ]
   },
-
   {
     id: 6,
     name: "Módulo VI",
-
     subjects: [
-      {
-        id: "m6_1",
-        name: "Escatologia",
-        playlist: null
-      },
-      {
-        id: "m6_2",
-        name: "Soteriologia",
-        playlist: null
-      },
-      {
-        id: "m6_3",
-        name: "Liturgia Cristã",
-        playlist: null
-      },
-      {
-        id: "m6_4",
-        name: "Língua Portuguesa",
-        playlist: null
-      }
+      { id: "m6_1", name: "Escatologia", playlist: null },
+      { id: "m6_2", name: "Soteriologia", playlist: null },
+      { id: "m6_3", name: "Liturgia Cristã", playlist: null },
+      { id: "m6_4", name: "Língua Portuguesa", playlist: null }
     ]
   }
-
 ];
-
 
 /* =====================================================
    CARREGAMENTO DOS DADOS
 ===================================================== */
 
 let courseData = JSON.parse(
-  localStorage.getItem("course_data") ||
-  JSON.stringify(initialCourseData)
+  localStorage.getItem("course_data") || JSON.stringify(initialCourseData)
 );
 
-
-/*
-  Usuários padrão:
-
-  SWS
-  senha: sws
-  função: administrador
-
-  aluno
-  senha: aluno
-  função: aluno
-*/
-
 let usersDB = JSON.parse(
-  localStorage.getItem("users_db") ||
-  JSON.stringify({
-    sws: {
-      password: "sws",
-      role: "admin"
-    },
-    aluno: {
-      password: "aluno",
-      role: "student"
-    }
+  localStorage.getItem("users_db") || JSON.stringify({
+    sws: { password: "sws", role: "admin" },
+    aluno: { password: "aluno", role: "student" }
   })
 );
 
-
-/*
-  IMPORTANTE:
-
-  Se o navegador já possuía um users_db salvo
-  antes desta versão, adicionamos o usuário aluno
-  sem apagar os usuários existentes.
-*/
-
 if (!usersDB["aluno"]) {
-
-  usersDB["aluno"] = {
-    password: "aluno",
-    role: "student"
-  };
-
-  localStorage.setItem(
-    "users_db",
-    JSON.stringify(usersDB)
-  );
+  usersDB["aluno"] = { password: "aluno", role: "student" };
+  localStorage.setItem("users_db", JSON.stringify(usersDB));
 }
-
-
-/*
-  Garantir também que o administrador SWS
-  continue existindo.
-*/
 
 if (!usersDB["sws"]) {
-
-  usersDB["sws"] = {
-    password: "sws",
-    role: "admin"
-  };
-
-  localStorage.setItem(
-    "users_db",
-    JSON.stringify(usersDB)
-  );
+  usersDB["sws"] = { password: "sws", role: "admin" };
+  localStorage.setItem("users_db", JSON.stringify(usersDB));
 }
 
-
-let currentUser =
-  localStorage.getItem("current_user") || null;
-
+let currentUser = localStorage.getItem("current_user") || null;
 let activeSubjectId = null;
 
-
-/* =====================================================
-   SALVAR DADOS DO CURSO
-===================================================== */
-
 function saveCourseData() {
-
-  localStorage.setItem(
-    "course_data",
-    JSON.stringify(courseData)
-  );
-
+  localStorage.setItem("course_data", JSON.stringify(courseData));
 }
 
-
 /* =====================================================
-   INICIALIZAÇÃO
+   INICIALIZAÇÃO & AUTENTICAÇÃO
 ===================================================== */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    if (
-      currentUser &&
-      usersDB[currentUser]
-    ) {
-
-      document.getElementById(
-        "loginOverlay"
-      ).style.display = "none";
-
-      setupUserSession();
-
-    } else {
-
-      document.getElementById(
-        "loginOverlay"
-      ).style.display = "flex";
-
-    }
-
+document.addEventListener("DOMContentLoaded", () => {
+  if (currentUser && usersDB[currentUser]) {
+    document.getElementById("loginOverlay").style.display = "none";
+    setupUserSession();
+  } else {
+    document.getElementById("loginOverlay").style.display = "flex";
   }
-);
-
-
-/* =====================================================
-   LOGIN
-===================================================== */
+});
 
 function handleLogin(e) {
-
   e.preventDefault();
+  const u = document.getElementById("username").value.trim();
+  const p = document.getElementById("password").value.trim();
+  const errorEl = document.getElementById("loginError");
 
-  const u =
-    document.getElementById(
-      "username"
-    ).value.trim();
-
-  const p =
-    document.getElementById(
-      "password"
-    ).value.trim();
-
-  const errorEl =
-    document.getElementById(
-      "loginError"
-    );
-
-
-  if (
-    usersDB[u] &&
-    usersDB[u].password === p
-  ) {
-
+  if (usersDB[u] && usersDB[u].password === p) {
     currentUser = u;
-
-    localStorage.setItem(
-      "current_user",
-      currentUser
-    );
-
+    localStorage.setItem("current_user", currentUser);
     errorEl.style.display = "none";
-
-    document.getElementById(
-      "loginOverlay"
-    ).style.display = "none";
-
+    document.getElementById("loginOverlay").style.display = "none";
     setupUserSession();
-
   } else {
-
     errorEl.style.display = "block";
-
   }
-
 }
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
 
 function handleLogout() {
-
-  localStorage.removeItem(
-    "current_user"
-  );
-
+  localStorage.removeItem("current_user");
   currentUser = null;
-
   location.reload();
-
 }
-
-
-/* =====================================================
-   CONFIGURAÇÃO DA SESSÃO
-===================================================== */
 
 function setupUserSession() {
+  document.getElementById("currentUserName").textContent = currentUser;
+  const isSWS = currentUser.toLowerCase() === "sws";
 
-  document.getElementById(
-    "currentUserName"
-  ).textContent = currentUser;
-
-
-  const isSWS =
-    currentUser.toLowerCase() === "sws";
-
-
-  document.getElementById(
-    "userRoleTag"
-  ).textContent =
-    isSWS
-      ? "Administrador"
-      : "Aluno";
-
-
-  document.getElementById(
-    "btnAdminRegister"
-  ).style.display =
-    isSWS
-      ? "inline-flex"
-      : "none";
-
+  document.getElementById("userRoleTag").textContent = isSWS ? "Administrador" : "Aluno";
+  document.getElementById("btnAdminRegister").style.display = isSWS ? "inline-flex" : "none";
 
   renderModules();
-
   updateOverallProgress();
-
 }
 
-
 /* =====================================================
-   MODAL ADMINISTRADOR
+   GERENCIAMENTO DE USUÁRIOS
 ===================================================== */
 
 function openAdminModal() {
-
-  document.getElementById(
-    "adminModal"
-  ).style.display = "flex";
-
+  document.getElementById("adminModal").style.display = "flex";
 }
-
 
 function closeAdminModal() {
-
-  document.getElementById(
-    "adminModal"
-  ).style.display = "none";
-
+  document.getElementById("adminModal").style.display = "none";
 }
-
-
-/* =====================================================
-   CRIAR USUÁRIO
-===================================================== */
 
 function handleRegisterUser(e) {
-
   e.preventDefault();
+  const newU = document.getElementById("newUsername").value.trim();
+  const newP = document.getElementById("newPassword").value.trim();
+  const registerErr = document.getElementById("registerError");
 
-
-  const newU =
-    document.getElementById(
-      "newUsername"
-    ).value.trim();
-
-  const newP =
-    document.getElementById(
-      "newPassword"
-    ).value.trim();
-
-  const registerErr =
-    document.getElementById(
-      "registerError"
-    );
-
-
-  if (
-    !newU ||
-    !newP
-  ) {
-
-    registerErr.textContent =
-      "Preencha usuário e senha.";
-
-    registerErr.style.display =
-      "block";
-
+  if (!newU || !newP) {
+    registerErr.textContent = "Preencha usuário e senha.";
+    registerErr.style.display = "block";
     return;
-
   }
-
 
   if (usersDB[newU]) {
-
-    registerErr.textContent =
-      "Este usuário já existe!";
-
-    registerErr.style.display =
-      "block";
-
+    registerErr.textContent = "Este usuário já existe!";
+    registerErr.style.display = "block";
     return;
-
   }
 
+  usersDB[newU] = { password: newP, role: "student" };
+  localStorage.setItem("users_db", JSON.stringify(usersDB));
 
-  usersDB[newU] = {
-    password: newP,
-    role: "student"
-  };
-
-
-  localStorage.setItem(
-    "users_db",
-    JSON.stringify(usersDB)
-  );
-
-
-  registerErr.style.display =
-    "none";
-
-
-  document.getElementById(
-    "newUsername"
-  ).value = "";
-
-  document.getElementById(
-    "newPassword"
-  ).value = "";
-
-
+  registerErr.style.display = "none";
+  document.getElementById("newUsername").value = "";
+  document.getElementById("newPassword").value = "";
   closeAdminModal();
 
-
-  alert(
-    `Usuário '${newU}' criado com sucesso!`
-  );
-
+  alert(`Usuário '${newU}' criado com sucesso!`);
 }
 
-
 /* =====================================================
-   GERENCIAMENTO DOS LINKS
+   MODAL DE GERENCIAMENTO DE LINKS
 ===================================================== */
 
 function openLinkModal(subId) {
-
   let subObj = null;
-
-
-  courseData.forEach(
-    m => {
-
-      const found =
-        m.subjects.find(
-          s => s.id === subId
-        );
-
-      if (found) {
-        subObj = found;
-      }
-
-    }
-  );
-
+  courseData.forEach(m => {
+    const found = m.subjects.find(s => s.id === subId);
+    if (found) subObj = found;
+  });
 
   if (!subObj) return;
 
-
-  document.getElementById(
-    "editSubjectId"
-  ).value = subId;
-
-
-  document.getElementById(
-    "linkModalTitle"
-  ).textContent =
-    `Editar Link: ${subObj.name}`;
-
-
-  document.getElementById(
-    "videoLinkInput"
-  ).value =
-    subObj.playlist || "";
-
-
-  document.getElementById(
-    "linkModal"
-  ).style.display = "flex";
-
+  document.getElementById("editSubjectId").value = subId;
+  document.getElementById("linkModalTitle").textContent = `Editar Link: ${subObj.name}`;
+  document.getElementById("videoLinkInput").value = subObj.playlist || "";
+  document.getElementById("linkModal").style.display = "flex";
 }
-
 
 function closeLinkModal() {
-
-  document.getElementById(
-    "linkModal"
-  ).style.display = "none";
-
+  document.getElementById("linkModal").style.display = "none";
 }
 
-
-/* =====================================================
-   PARSER DO YOUTUBE
-===================================================== */
-
 function parseYouTubeInput(input) {
-
   if (!input) return null;
-
   input = input.trim();
-
 
   let videoId = null;
   let playlistId = null;
 
-
-  const listMatch =
-    input.match(
-      /[?&]list=([a-zA-Z0-9_-]+)/
-    );
-
-
-  if (
-    listMatch &&
-    listMatch[1]
-  ) {
-
-    playlistId =
-      listMatch[1];
-
-  } else if (
-    input.startsWith("PL")
-  ) {
-
+  const listMatch = input.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (listMatch && listMatch[1]) {
+    playlistId = listMatch[1];
+  } else if (input.startsWith("PL")) {
     playlistId = input;
-
   }
 
-
-  const videoMatch =
-    input.match(
-      /(?:v=|\/embed\/|\/v\/|youtu\.be\/|\/watch\?v=|^)([a-zA-Z0-9_-]{11})/
-    );
-
-
-  if (
-    videoMatch &&
-    videoMatch[1] &&
-    !videoMatch[1].startsWith("PL")
-  ) {
-
-    videoId =
-      videoMatch[1];
-
+  const videoMatch = input.match(/(?:v=|\/embed\/|\/v\/|youtu\.be\/|\/watch\?v=|^)([a-zA-Z0-9_-]{11})/);
+  if (videoMatch && videoMatch[1] && !videoMatch[1].startsWith("PL")) {
+    videoId = videoMatch[1];
   }
-
 
   if (playlistId) {
-
-    return {
-      type: "playlist",
-      playlistId: playlistId,
-      videoId: videoId
-    };
-
+    return { type: "playlist", playlistId: playlistId, videoId: videoId };
   }
 
-
-  return {
-    type: "video",
-    videoId: videoId || input
-  };
-
+  return { type: "video", videoId: videoId || input };
 }
-
-
-/* =====================================================
-   SALVAR LINK
-===================================================== */
 
 function handleSaveLink(e) {
-
   e.preventDefault();
+  const subId = document.getElementById("editSubjectId").value;
+  const rawInput = document.getElementById("videoLinkInput").value;
 
-
-  const subId =
-    document.getElementById(
-      "editSubjectId"
-    ).value;
-
-
-  const rawInput =
-    document.getElementById(
-      "videoLinkInput"
-    ).value;
-
-
-  courseData.forEach(
-    m => {
-
-      const sub =
-        m.subjects.find(
-          s => s.id === subId
-        );
-
-
-      if (sub) {
-
-        sub.playlist =
-          rawInput.trim() === ""
-            ? null
-            : rawInput.trim();
-
-      }
-
+  courseData.forEach(m => {
+    const sub = m.subjects.find(s => s.id === subId);
+    if (sub) {
+      sub.playlist = rawInput.trim() === "" ? null : rawInput.trim();
     }
-  );
-
+  });
 
   saveCourseData();
-
   closeLinkModal();
-
   renderModules();
 
-
-  alert(
-    "Link da aula atualizado com sucesso!"
-  );
-
+  alert("Link da aula atualizado com sucesso!");
 }
-
-
-/* =====================================================
-   EXCLUIR LINK
-===================================================== */
 
 function handleDeleteLink() {
+  const subId = document.getElementById("editSubjectId").value;
+  if (!confirm("Tem certeza que deseja excluir o link desta aula?")) return;
 
-  const subId =
-    document.getElementById(
-      "editSubjectId"
-    ).value;
-
-
-  if (
-    !confirm(
-      "Tem certeza que deseja excluir o link desta aula?"
-    )
-  ) {
-
-    return;
-
-  }
-
-
-  courseData.forEach(
-    m => {
-
-      const sub =
-        m.subjects.find(
-          s => s.id === subId
-        );
-
-
-      if (sub) {
-
-        sub.playlist = null;
-
-      }
-
-    }
-  );
-
+  courseData.forEach(m => {
+    const sub = m.subjects.find(s => s.id === subId);
+    if (sub) sub.playlist = null;
+  });
 
   saveCourseData();
-
   closeLinkModal();
-
   renderModules();
 
+  if (activeSubjectId === subId) closePlayer();
 
-  if (
-    activeSubjectId === subId
-  ) {
-
-    closePlayer();
-
-  }
-
-
-  alert(
-    "Link removido com sucesso!"
-  );
-
+  alert("Link removido com sucesso!");
 }
 
-
 /* =====================================================
-   PROGRESSO DO USUÁRIO
+   ACOMPANHAMENTO DE PROGRESSO
 ===================================================== */
 
 function getUserProgress() {
-
-  const key =
-    `progress_${currentUser}`;
-
-
-  return JSON.parse(
-    localStorage.getItem(key) || "{}"
-  );
-
+  const key = `progress_${currentUser}`;
+  return JSON.parse(localStorage.getItem(key) || "{}");
 }
 
-
-function setUserProgress(
-  subjectId,
-  percent
-) {
-
-  const progress =
-    getUserProgress();
-
-
-  progress[subjectId] =
-    parseInt(
-      percent,
-      10
-    );
-
-
-  localStorage.setItem(
-    `progress_${currentUser}`,
-    JSON.stringify(progress)
-  );
-
+function setUserProgress(subjectId, percent) {
+  const progress = getUserProgress();
+  progress[subjectId] = parseInt(percent, 10);
+  localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progress));
 
   updateOverallProgress();
-
   renderModules();
-
 }
-
-
-/* =====================================================
-   PROGRESSO GERAL
-===================================================== */
 
 function updateOverallProgress() {
-
-  const progress =
-    getUserProgress();
-
-
-  const totalSubjects =
-    courseData.reduce(
-      (acc, m) =>
-        acc + m.subjects.length,
-      0
-    );
-
+  const progress = getUserProgress();
+  const totalSubjects = courseData.reduce((acc, m) => acc + m.subjects.length, 0);
 
   let totalPercentSum = 0;
+  courseData.forEach(m => {
+    m.subjects.forEach(s => {
+      totalPercentSum += progress[s.id] || 0;
+    });
+  });
 
-
-  courseData.forEach(
-    m => {
-
-      m.subjects.forEach(
-        s => {
-
-          totalPercentSum +=
-            progress[s.id] || 0;
-
-        }
-      );
-
-    }
-  );
-
-
-  const overall =
-    totalSubjects > 0
-      ? Math.round(
-          totalPercentSum /
-          totalSubjects
-        )
-      : 0;
-
-
-  document.getElementById(
-    "overallBar"
-  ).style.width =
-    `${overall}%`;
-
-
-  document.getElementById(
-    "overallPercent"
-  ).textContent =
-    `${overall}%`;
-
+  const overall = totalSubjects > 0 ? Math.round(totalPercentSum / totalSubjects) : 0;
+  document.getElementById("overallBar").style.width = `${overall}%`;
+  document.getElementById("overallPercent").textContent = `${overall}%`;
 }
 
-
 /* =====================================================
-   RENDERIZAÇÃO DOS MÓDULOS
+   RENDERIZAÇÃO E EXPANSÃO DOS MÓDULOS
 ===================================================== */
 
 function renderModules() {
-
-  const searchElement =
-    document.getElementById(
-      "searchInput"
-    );
-
-
-  const filter =
-    searchElement
-      ? searchElement.value.toLowerCase()
-      : "";
-
-
-  const container =
-    document.getElementById(
-      "modulesContainer"
-    );
-
+  const container = document.getElementById("modulesContainer");
+  const searchVal = (document.getElementById("searchInput")?.value || "").toLowerCase().trim();
+  const isSWS = currentUser && currentUser.toLowerCase() === "sws";
+  const userProgress = getUserProgress();
 
   container.innerHTML = "";
 
+  courseData.forEach(module => {
+    const filteredSubjects = module.subjects.filter(s =>
+      s.name.toLowerCase().includes(searchVal)
+    );
 
-  const userProgress =
-    getUserProgress();
+    if (searchVal && filteredSubjects.length === 0) return;
 
+    const moduleEl = document.createElement("div");
+    moduleEl.className = "module";
+    moduleEl.id = `module-${module.id}`;
 
-  const isSWS =
-    currentUser &&
-    currentUser.toLowerCase() === "sws";
+    let subjectsHtml = "";
+    const subjectsToRender = searchVal ? filteredSubjects : module.subjects;
 
+    subjectsToRender.forEach(s => {
+      const p = userProgress[s.id] || 0;
+      const isAvailable = Boolean(s.playlist);
 
-  courseData.forEach(
-    module => {
-
-      const filtered =
-        module.subjects.filter(
-          s =>
-            s.name
-              .toLowerCase()
-              .includes(filter)
-        );
-
-
-      if (
-        filtered.length === 0 &&
-        filter !== ""
-      ) {
-
-        return;
-
-      }
-
-
-      const moduleEl =
-        document.createElement(
-          "article"
-        );
-
-
-      moduleEl.className =
-        `module ${
-          filter !== ""
-            ? "open"
-            : ""
-        }`;
-
-
-      moduleEl.id =
-        `module-${module.id}`;
-
-
-      const subjectsHtml =
-        filtered.map(
-          sub => {
-
-            const p =
-              userProgress[sub.id] || 0;
-
-
-            const isAvailable =
-              !!sub.playlist;
-
-
-            return `
-
-              <div class="subject-card">
-
-                <div class="subject-top">
-
-                  <span
-                    class="subject-title"
-                    onclick="openSubject(${module.id}, '${sub.id}')"
-                  >
-                    📖 ${sub.name}
-                  </span>
-
-                  <div class="subject-actions">
-
-                    ${
-                      isSWS
-                        ? `
-                          <button
-                            class="edit-link-btn"
-                            onclick="openLinkModal('${sub.id}')"
-                            title="Inserir, alterar ou excluir link"
-                          >
-                            ⚙️ Link
-                          </button>
-                        `
-                        : ""
-                    }
-
-
-                    <button
-                      class="action-btn ${
-                        isAvailable
-                          ? "available"
-                          : ""
-                      }"
-                      onclick="openSubject(${module.id}, '${sub.id}')"
-                    >
-                      ${
-                        isAvailable
-                          ? "▶ Assistir"
-                          : "Em breve"
-                      }
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                <div class="subject-progress-info">
-
-                  <span>
-                    Progresso da matéria:
-                  </span>
-
-                  <strong>
-                    ${p}% assistido
-                  </strong>
-
-                </div>
-
-
-                <div
-                  class="progress-bar-bg"
-                  style="height:6px;"
-                >
-
-                  <div
-                    class="progress-bar-fill"
-                    style="width:${p}%;"
-                  ></div>
-
-                </div>
-
-              </div>
-
-            `;
-
-          }
-        ).join("");
-
-
-      moduleEl.innerHTML = `
-
-        <button
-          class="module-toggle"
-          onclick="toggleModule(${module.id})"
-        >
-
-          <h3 class="module-title">
-            ${module.name}
-          </h3>
-
-          <div>
-            ⌄
+      subjectsHtml += `
+        <div class="subject-card">
+          <div class="subject-top">
+            <span class="subject-title" onclick="openSubject(${module.id}, '${s.id}')">
+              ${s.name}
+            </span>
+            <div class="subject-actions">
+              ${isSWS ? `<button class="edit-link-btn" onclick="openLinkModal('${s.id}')">⚙️ Link</button>` : ''}
+              <button class="action-btn ${isAvailable ? 'available' : ''}" onclick="openSubject(${module.id}, '${s.id}')">
+                ${isAvailable ? '▶ Assistir' : 'Indisponível'}
+              </button>
+            </div>
           </div>
-
-        </button>
-
-
-        <div class="subjects">
-          ${subjectsHtml}
+          <div class="subject-progress-info">
+            <span>Progresso</span>
+            <span>${p}%</span>
+          </div>
         </div>
-
       `;
+    });
 
+    moduleEl.innerHTML = `
+      <button class="module-toggle" onclick="toggleModule(${module.id})">
+        <h2 class="module-title">📌 ${module.name}</h2>
+        <span class="icon">▼</span>
+      </button>
+      <div class="subjects">
+        ${subjectsHtml}
+      </div>
+    `;
 
-      container.appendChild(
-        moduleEl
-      );
+    if (searchVal) moduleEl.classList.add("open");
 
-    }
-  );
-
+    container.appendChild(moduleEl);
+  });
 }
 
-
-/* =====================================================
-   ABRIR/FECHAR MÓDULO
-===================================================== */
-
-function toggleModule(id) {
-
-  const el =
-    document.getElementById(
-      `module-${id}`
-    );
-
-
-  if (el) {
-
-    el.classList.toggle(
-      "open"
-    );
-
-  }
-
+function toggleModule(moduleId) {
+  const mod = document.getElementById(`module-${moduleId}`);
+  if (mod) mod.classList.toggle("open");
 }
 
-
 /* =====================================================
-   PLAYER
+   CONTROLE DO PLAYER DE VÍDEO
 ===================================================== */
 
-function openSubject(
-  moduleId,
-  subId
-) {
+function openSubject(moduleId, subjectId) {
+  let subObj = null;
 
-  const module =
-    courseData.find(
-      m => m.id === moduleId
-    );
-
-
-  if (!module) return;
-
-
-  const subject =
-    module.subjects.find(
-      s => s.id === subId
-    );
-
-
-  if (!subject) return;
-
-
-  activeSubjectId =
-    subId;
-
-
-  const area =
-    document.getElementById(
-      "playerArea"
-    );
-
-
-  const player =
-    document.getElementById(
-      "player"
-    );
-
-
-  const title =
-    document.getElementById(
-      "playerTitle"
-    );
-
-
-  const simControls =
-    document.getElementById(
-      "simControls"
-    );
-
-
-  if (!subject.playlist) {
-
-    title.textContent =
-      subject.name;
-
-    player.src = "";
-
-    simControls.style.display =
-      "none";
-
-
-    alert(
-      "Esta aula ainda não possui um link cadastrado."
-    );
-
-
-    return;
-
-  }
-
-
-  title.textContent =
-    `${module.name} • ${subject.name}`;
-
-
-  const parsed =
-    parseYouTubeInput(
-      subject.playlist
-    );
-
-
-  let finalUrl = "";
-
-
-  if (
-    parsed.type === "playlist"
-  ) {
-
-    if (parsed.videoId) {
-
-      finalUrl =
-        `https://www.youtube.com/embed/${parsed.videoId}?list=${parsed.playlistId}`;
-
-    } else {
-
-      finalUrl =
-        `https://www.youtube.com/embed/videoseries?list=${parsed.playlistId}`;
-
-    }
-
-  } else {
-
-    finalUrl =
-      `https://www.youtube.com/embed/${parsed.videoId}`;
-
-  }
-
-
-  player.src =
-    finalUrl;
-
-
-  simControls.style.display =
-    "flex";
-
-
-  const userProgress =
-    getUserProgress();
-
-
-  const currentP =
-    userProgress[subId] || 0;
-
-
-  document.getElementById(
-    "simSlider"
-  ).value =
-    currentP;
-
-
-  document.getElementById(
-    "simPercentText"
-  ).textContent =
-    `${currentP}% assistido`;
-
-
-  area.classList.add(
-    "active"
-  );
-
-
-  area.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
+  courseData.forEach(m => {
+    const found = m.subjects.find(s => s.id === subjectId);
+    if (found) subObj = found;
   });
 
-}
-
-
-/* =====================================================
-   ATUALIZAR PROGRESSO
-===================================================== */
-
-function updateVideoProgress(
-  val
-) {
-
-  document.getElementById(
-    "simPercentText"
-  ).textContent =
-    `${val}% assistido`;
-
-
-  if (activeSubjectId) {
-
-    setUserProgress(
-      activeSubjectId,
-      val
-    );
-
+  if (!subObj || !subObj.playlist) {
+    alert("Conteúdo ainda não disponível para esta matéria.");
+    return;
   }
 
+  activeSubjectId = subjectId;
+
+  const parsed = parseYouTubeInput(subObj.playlist);
+  let embedUrl = "";
+
+  if (parsed.type === "playlist") {
+    embedUrl = `https://www.youtube.com/embed/videoseries?list=${parsed.playlistId}`;
+  } else {
+    embedUrl = `https://www.youtube.com/embed/${parsed.videoId}`;
+  }
+
+  document.getElementById("playerTitle").textContent = subObj.name;
+  document.getElementById("player").src = embedUrl;
+
+  const userProgress = getUserProgress();
+  const currentP = userProgress[subjectId] || 0;
+
+  document.getElementById("simSlider").value = currentP;
+  document.getElementById("simPercentText").textContent = `${currentP}% assistido`;
+  document.getElementById("simControls").style.display = "flex";
+
+  const playerArea = document.getElementById("playerArea");
+  playerArea.classList.add("active");
+  playerArea.scrollIntoView({ behavior: "smooth" });
 }
-
-
-/* =====================================================
-   FECHAR PLAYER
-===================================================== */
 
 function closePlayer() {
-
-  document.getElementById(
-    "player"
-  ).src = "";
-
-
-  document.getElementById(
-    "playerArea"
-  ).classList.remove(
-    "active"
-  );
-
-
-  activeSubjectId =
-    null;
-
+  const playerArea = document.getElementById("playerArea");
+  playerArea.classList.remove("active");
+  document.getElementById("player").src = "";
+  activeSubjectId = null;
 }
 
+function updateVideoProgress(val) {
+  if (!activeSubjectId) return;
+  document.getElementById("simPercentText").textContent = `${val}% assistido`;
+  setUserProgress(activeSubjectId, val);
+}
 
 /* =====================================================
-   TEMA
+   TEMA CLARO / ESCURO
 ===================================================== */
 
 function toggleTheme() {
-
-  const current =
-    document.documentElement
-      .getAttribute(
-        "data-theme"
-      );
-
-
-  document.documentElement
-    .setAttribute(
-      "data-theme",
-      current === "dark"
-        ? "light"
-        : "dark"
-    );
-
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", newTheme);
 }
 
-</script>
-  <!-- INTEGRACAO FIREBASE SWS EAD -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { 
-    getAuth, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { 
-    getFirestore, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    updateDoc 
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";  
-
-  // Cole aqui suas chaves que pegou na aba CDN/Config do Firebase
-   // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBScdiQoVbW8wZXVuLIzFS7Sl1U-Il-qMQ",
-  authDomain: "sws-ead.firebaseapp.com",
-  projectId: "sws-ead",
-  storageBucket: "sws-ead.firebasestorage.app",
-  messagingSenderId: "175788775189",
-  appId: "1:175788775189:web:8952b0f3eba14c4355bb1c",
-  measurementId: "G-91QNNV1YBD"
-};
-  // Inicializar Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  // Cadastro de Aluno
-  window.cadastrarAluno = async function(nome, email, senha) {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-      const user = userCredential.user;
-
-      await setDoc(doc(db, "alunos", user.uid), {
-        nome: nome,
-        email: email,
-        perfil: "aluno",
-        progressoGeral: 0,
-        criadoEm: new Date()
-      });
-
-      alert("Aluno cadastrado com sucesso!");
-    } catch (error) {
-      console.error("Erro no cadastro:", error);
-      alert("Erro ao cadastrar: " + error.message);
-    }
-  };
-
-  // Login de Aluno
-  window.fazerLogin = async function(email, senha) {
-    try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      alert("Login efetuado com sucesso!");
-    } catch (error) {
-      console.error("Erro no login:", error);
-      alert("Falha ao entrar: " + error.message);
-    }
-  };
-
-  // Logout
-  window.fazerLogout = function() {
-    signOut(auth).then(() => {
-      window.location.reload();
-    });
-  };
-
-  // Monitorar Estado do Usuário
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      const docRef = doc(db, "alunos", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const dadosAluno = docSnap.data();
-        const headerName = document.querySelector("header strong");
-        const headerRole = document.querySelector("header span:last-child");
-        
-        if (headerName) headerName.innerText = dadosAluno.nome;
-        if (headerRole) headerRole.innerText = dadosAluno.perfil;
-      }
-    }
-  });
 </script>
 
 </body>
