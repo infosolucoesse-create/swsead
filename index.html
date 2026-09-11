@@ -122,27 +122,25 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
 <script type="module">
   // 1. IMPORTAÇÃO DO FIREBASE (v10+)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getAuth, 
-signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  onAuthStateChanged, 
+  signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
 const firebaseConfig = {
-  apiKey: "AIzaSy...", // Cole a sua apiKey real aqui
+  apiKey: "AIzaSyBScdiQoVbW8wZXVuLiZFS7Sl1U-Il-qMQ",
   authDomain: "sws-ead.firebaseapp.com",
   projectId: "sws-ead",
   storageBucket: "sws-ead.firebasestorage.app",
-  messagingSenderId: "123456789...", // Cole seu messagingSenderId real aqui
-  appId: "1:123456789...:web:abc..." // Cole seu appId real aqui
+  messagingSenderId: "175788775189",
+  appId: "1:175788775189:web:8952b0f3eba14c4355bb1c"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
   const initialCourseData = [
     { id: 1, name: "Módulo I", subjects: [
       { id: "m1_1", name: "Teologia", playlist: null }, { id: "m1_2", name: "Trindade", playlist: null },
