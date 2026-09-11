@@ -124,24 +124,24 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { 
     getAuth, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    onAuthStateChanged, 
-    signOut 
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  // 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
+// 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
 const firebaseConfig = {
-  apiKey: "COLE_AQUI_SUA_API_KEY",
+  apiKey: "AIzaSy...", // Cole a sua apiKey real aqui
   authDomain: "sws-ead.firebaseapp.com",
   projectId: "sws-ead",
   storageBucket: "sws-ead.firebasestorage.app",
-  messagingSenderId: "COLE_AQUI_SEU_MESSAGING_SENDER_ID",
-  appId: "COLE_AQUI_SEU_APP_ID"
+  messagingSenderId: "123456789...", // Cole seu messagingSenderId real aqui
+  appId: "1:123456789...:web:abc..." // Cole seu appId real aqui
 };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
   const initialCourseData = [
     { id: 1, name: "Módulo I", subjects: [
