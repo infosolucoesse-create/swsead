@@ -503,10 +503,11 @@
       activeSubjectId = null;
     };
 
-    window.toggleTheme = () => {
-      let t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", t);
-    };
+  window.toggleTheme = () => {
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  const newTheme = currentTheme === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", newTheme);
+};
   </script>
 </body>
 </html>
