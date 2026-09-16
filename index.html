@@ -1,25 +1,28 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Cursos</title>
   <style>
     :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --bg-color: #090d16;
+      --card-bg: #131b2e;
+      --card-hover: #19233c;
+      --text-main: #f1f5f9;
+      --text-muted: #8b9bb4;
       --primary: #10b981;
       --primary-hover: #059669;
       --accent: #3b82f6;
       --danger: #ef4444;
-      --border-color: #334155;
+      --border-color: #1e293b;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
     }
 
     [data-theme="light"] {
-      --bg-color: #f8fafc;
+      --bg-color: #f1f5f9;
       --card-bg: #ffffff;
+      --card-hover: #f8fafc;
       --text-main: #0f172a;
       --text-muted: #64748b;
       --primary: #10b981;
@@ -27,60 +30,79 @@
       --accent: #2563eb;
       --danger: #dc2626;
       --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; transition: background-color 0.3s, color 0.3s; }
-    .container { max-width: 900px; margin: 0 auto; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 30px 20px; transition: background-color 0.3s, color 0.3s; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .container { width: 100%; max-width: 960px; margin: 0 auto; display: none; }
+    .container.active { display: block; }
 
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
-    .user-info { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-    .role-badge { background-color: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
+    .user-info { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; }
+    .role-badge { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
 
-    .overall-progress { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 20px; }
-    .progress-bar-bg { background-color: var(--border-color); height: 10px; border-radius: 5px; overflow: hidden; margin-top: 8px; }
-    .progress-bar-fill { background: linear-gradient(90deg, #10b981, #3b82f6); height: 100%; width: 0%; transition: width 0.3s ease; }
+    .overall-progress { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: var(--shadow); }
+    .progress-bar-bg { background-color: var(--border-color); height: 10px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+    .progress-bar-fill { background: linear-gradient(90deg, #10b981, #3b82f6); height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; }
-    .search-bar { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-main); }
+    .controls { display: flex; gap: 12px; margin-bottom: 25px; }
+    .search-bar { flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-bar:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
 
-    .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
-    .btn-primary { background-color: var(--primary); color: white; }
-    .btn-primary:hover { background-color: var(--primary-hover); }
-    .btn-secondary { background-color: var(--border-color); color: var(--text-main); }
+    .btn { padding: 9px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); }
+    .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary { background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { background-color: var(--card-hover); border-color: var(--text-muted); }
     .btn-danger { background-color: var(--danger); color: white; }
 
-    .module { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 15px; overflow: hidden; }
-    .module-toggle { width: 100%; text-align: left; padding: 15px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .module-toggle:hover { background-color: rgba(255, 255, 255, 0.03); }
-    .subjects { display: none; padding: 10px 15px; border-top: 1px solid var(--border-color); grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+    .module { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); transition: border-color 0.2s; }
+    .module:hover { border-color: rgba(59, 130, 246, 0.3); }
+    .module-toggle { width: 100%; text-align: left; padding: 18px 20px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .module-toggle:hover { background-color: var(--card-hover); }
+    .subjects { display: none; padding: 15px 20px 20px; border-top: 1px solid var(--border-color); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
     .module.open .subjects { display: grid; }
 
-    .subject-card { background-color: var(--bg-color); border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px; }
-    .subject-top { display: flex; justify-content: space-between; align-items: center; }
-    .subject-title { font-size: 14px; font-weight: 600; cursor: pointer; }
-    .action-btn { padding: 4px 8px; font-size: 11px; border-radius: 4px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); }
-    .action-btn.available { background-color: var(--accent); color: white; }
-    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; margin-right: 5px; }
+    .subject-card { background-color: var(--bg-color); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s, border-color 0.2s; }
+    .subject-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .subject-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .subject-title { font-size: 14px; font-weight: 600; cursor: pointer; line-height: 1.3; }
+    .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
+    .action-btn.available { background-color: var(--accent); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
+    .action-btn.available:hover { filter: brightness(1.1); }
+    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px; }
+    .edit-btn:hover { color: var(--text-main); }
 
-    .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; }
-    .player-section.active { display: block; }
-    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 6px; background-color: #000; margin-top: 10px; }
+    .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+    .player-section.active { display: block; animation: fadeIn 0.3s ease; }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background-color: #000; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .video-container iframe, .video-container #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
-    .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; }
-    .modal h2 { margin-bottom: 15px; font-size: 18px; }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-muted); }
-    .form-group input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); }
-    .form-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block; }
-    .error-msg { color: var(--danger); font-size: 12px; margin-top: 8px; display: none; }
+    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(5, 8, 15, 0.85); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
+    .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .modal h2 { margin-bottom: 6px; font-size: 20px; font-weight: 700; }
+    .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 500; }
+    .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; display: block; }
+    .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="container" id="mainContainer">
     <header>
       <div class="user-info">
         <span id="currentUserName">Carregando...</span>
@@ -220,9 +242,13 @@
       if (user) {
         currentUser = user.email;
         closeModal();
+        $("mainContainer").classList.add("active");
+        document.body.style.justifyContent = "flex-start";
         setupUserSession();
       } else {
         currentUser = null;
+        $("mainContainer").classList.remove("active");
+        document.body.style.justifyContent = "center";
         showLoginModal();
       }
     });
@@ -232,12 +258,13 @@
 
     window.showLoginModal = () => {
       openModal(`
-        <h2>Entrar na Plataforma</h2>
+        <h2>Bem-vindo(a)</h2>
+        <p class="modal-subtitle">Entre com suas credenciais para acessar os cursos.</p>
         <form id="formLogin">
-          <div class="form-group"><label>E-mail do Aluno</label><input type="email" id="u" placeholder="seuemail@exemplo.com" required></div>
-          <div class="form-group"><label>Senha</label><input type="password" id="p" required></div>
-          <button class="btn btn-primary" type="submit">Acessar</button>
-          <div class="error-msg" id="err">Credenciais incorretas ou usuário inexistente!</div>
+          <div class="form-group"><label>E-mail</label><input type="email" id="u" placeholder="seuemail@exemplo.com" required></div>
+          <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
+          <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
+          <div class="error-msg" id="err">E-mail ou senha incorretos.</div>
         </form>
       `);
       $("formLogin").addEventListener("submit", handleLogin);
@@ -246,12 +273,15 @@
     window.showRegisterModal = () => {
       openModal(`
         <h2>Cadastrar Aluno</h2>
+        <p class="modal-subtitle">Adicione um novo usuário ao sistema.</p>
         <form id="formRegister">
-          <div class="form-group"><label>E-mail do Novo Aluno</label><input type="email" id="nu" placeholder="aluno@exemplo.com" required></div>
-          <div class="form-group"><label>Senha (mínimo 6 caracteres)</label><input type="password" id="np" required minlength="6"></div>
-          <button class="btn btn-primary" type="submit" style="margin-top:10px;">Criar Usuário</button>
-          <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
-          <div class="error-msg" id="err">Erro ao cadastrar. Verifique os dados.</div>
+          <div class="form-group"><label>E-mail do Aluno</label><input type="email" id="nu" placeholder="aluno@exemplo.com" required></div>
+          <div class="form-group"><label>Senha</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
+            <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
+          </div>
+          <div class="error-msg" id="err">Erro ao cadastrar usuário.</div>
         </form>
       `);
       $("formRegister").addEventListener("submit", handleRegister);
@@ -260,16 +290,20 @@
     window.showLinkModal = (subId) => {
       let sub = courseData.flatMap(m => m.subjects).find(s => s.id === subId);
       openModal(`
-        <h2>Editar Vídeo: ${sub.name}</h2>
+        <h2>Editar Aula</h2>
+        <p class="modal-subtitle">${sub.name}</p>
         <form id="formLink">
           <div class="form-group">
-            <label>Link ou ID YouTube</label>
-            <input type="text" id="vLink" value="${sub.playlist || ''}">
-            <span class="form-hint">Insira o link ou ID do vídeo/playlist.</span>
+            <label>Link ou ID do YouTube</label>
+            <input type="text" id="vLink" value="${sub.playlist || ''}" placeholder="Cole a URL ou ID aqui">
           </div>
-          <button class="btn btn-primary" type="submit">💾 Salvar</button>
-          <button class="btn btn-danger" type="button" id="btnDeleteLink">🗑️ Remover</button>
-          <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit">💾 Salvar Alterações</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-danger" type="button" id="btnDeleteLink" style="flex:1;">🗑️ Remover Link</button>
+              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
         </form>
       `);
       $("formLink").addEventListener("submit", (e) => handleSaveLink(e, subId));
@@ -284,7 +318,6 @@
         closeModal();
       } catch (error) {
         $("err").style.display = "block";
-        $("err").textContent = "Erro de login: " + error.message;
       }
     }
 
@@ -297,7 +330,6 @@
         closeModal();
       } catch (error) {
         $("err").style.display = "block";
-        $("err").textContent = "Erro no cadastro: " + error.message;
       }
     }
 
@@ -504,7 +536,8 @@
     };
 
     window.toggleTheme = () => {
-      let t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      let current = document.documentElement.getAttribute("data-theme");
+      let t = current === "light" ? "dark" : "light";
       document.documentElement.setAttribute("data-theme", t);
     };
   </script>
