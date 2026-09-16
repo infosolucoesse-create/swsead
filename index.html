@@ -278,10 +278,10 @@
           </div>
         </div>
         <form id="formLogin">
-          <div class="form-group"><label>E-mail</label><input type="email" id="u" placeholder="seuemail@exemplo.com" required></div>
+          <div class="form-group"><label>E-mail ou Nome de Usuário</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
           <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
-          <div class="error-msg" id="err">E-mail ou senha incorretos.</div>
+          <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
         </form>
       `);
       $("formLogin").addEventListener("submit", handleLogin);
@@ -297,7 +297,7 @@
           </div>
         </div>
         <form id="formRegister">
-          <div class="form-group"><label>E-mail do Aluno</label><input type="email" id="nu" placeholder="aluno@exemplo.com" required></div>
+          <div class="form-group"><label>E-mail ou Nome de Usuário</label><input type="text" id="nu" placeholder="Ex: Marcos ou aluno@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
           <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
@@ -332,9 +332,15 @@
       $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
     };
 
+    function resolveEmail(input) {
+      let trimmed = input.trim();
+      return trimmed.includes('@') ? trimmed : `${trimmed.toLowerCase().replace(/\s+/g, '')}@sws-ead.internal`;
+    }
+
     async function handleLogin(e) {
       e.preventDefault();
-      let email = $("u").value.trim(), senha = $("p").value.trim();
+      let email = resolveEmail($("u").value);
+      let senha = $("p").value.trim();
       try {
         await signInWithEmailAndPassword(auth, email, senha);
         closeModal();
@@ -345,10 +351,12 @@
 
     async function handleRegister(e) {
       e.preventDefault();
-      let email = $("nu").value.trim(), senha = $("np").value.trim();
+      let rawInput = $("nu").value.trim();
+      let email = resolveEmail(rawInput);
+      let senha = $("np").value.trim();
       try {
         await createUserWithEmailAndPassword(auth, email, senha);
-        alert(`Usuário '${email}' cadastrado com sucesso!`);
+        alert(`Usuário '${rawInput}' cadastrado com sucesso!`);
         closeModal();
       } catch (error) {
         $("err").style.display = "block";
@@ -360,8 +368,16 @@
     };
 
     async function setupUserSession() {
-      $("currentUserName").textContent = currentUser;
-      let isAdmin = currentUser.toLowerCase() === "infosolucoesse@gmail.com";
+      let displayName = currentUser.endsWith('@sws-ead.internal')
+        ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1)
+        : currentUser;
+      
+      $("currentUserName").textContent = displayName;
+      
+      // Permite acesso administrativo para o e-mail antigo ou para o usuário curto "anderson"
+      let emailLower = currentUser.toLowerCase();
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower === "anderson@sws-ead.internal";
+      
       $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
       await loadCourseDataFromCloud();
@@ -402,7 +418,8 @@
 
     window.renderModules = () => {
       let search = $("searchInput").value.toLowerCase().trim();
-      let isAdmin = currentUser?.toLowerCase() === "infosolucoesse@gmail.com";
+      let emailLower = currentUser?.toLowerCase() || "";
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower === "anderson@sws-ead.internal";
       let prog = getProgress();
       let html = "";
 
@@ -541,7 +558,6 @@
         $("simSlider").value = percent;
         $("simPercentText").textContent = percent + "% assistido";
         
-        let currentSaved = getProgress()[activeSpaceId = activeSubjectId] || 0; // fallback safe
         let currentSavedVal = getProgress()[activeSubjectId] || 0;
         if (percent > currentSavedVal) {
           setProgress(activeSubjectId, percent);
