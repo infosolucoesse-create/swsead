@@ -120,27 +120,34 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
 </main>
 
 <script type="module">
-  // 1. IMPORTAÇÃO DO FIREBASE (v10+)
+// 1. IMPORTAÇÃO DO FIREBASE (v10+)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  onAuthStateChanged, 
-  signOut 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    setDoc 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
-const firebaseConfig = {
-apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
-  authDomain: "sws-ead.firebaseapp.com",
-  projectId: "sws-ead",
-  storageBucket: "sws-ead.firebasestorage.app",
-  messagingSenderId: "175788775189",
-  appId: "1:175788775189:web:8952b0f3eba14c4355bb1c"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+  // 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
+  const firebaseConfig = {
+    apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
+    authDomain: "sws-ead.firebaseapp.com",
+    projectId: "sws-ead",
+    storageBucket: "sws-ead.firebasestorage.app",
+    messagingSenderId: "175788775189",
+    appId: "1:175788775189:web:8952b0f3eba14c4355bb1c"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app); // Inicializa o Firestore
   const initialCourseData = [
     { id: 1, name: "Módulo I", subjects: [
       { id: "m1_1", name: "Teologia", playlist: null }, { id: "m1_2", name: "Trindade", playlist: null },
@@ -170,12 +177,35 @@ const auth = getAuth(app);
     ]}
   ];
 
-  let courseData = JSON.parse(localStorage.getItem("course_data") || JSON.stringify(initialCourseData));
+  let courseData = initialCourseData;
   let currentUser = null;
   let activeSubjectId = null;
 
   const $ = id => document.getElementById(id);
-  const saveCourseData = () => localStorage.setItem("course_data", JSON.stringify(courseData));
+
+  // Salva a estrutura do curso no Firestore para TODOS os alunos
+  async function saveCourseData() {
+    try {
+      await setDoc(doc(db, "cursos", "geral"), { modules: courseData });
+      console.log("Aulas atualizadas no banco de dados!");
+    } catch (error) {
+      console.error("Erro ao salvar no Firestore:", error);
+    }
+  }
+
+  // Carrega as aulas atualizadas da nuvem
+  async function loadCourseDataFromCloud() {
+    try {
+      const docRef = doc(db, "cursos", "geral");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        courseData = docSnap.data().modules;
+      }
+    } catch (error) {
+      console.error("Erro ao carregar do Firestore:", error);
+    }
+    renderModules();
+  }
 
   // MONITORAR STATUS DE AUTENTICAÇÃO DO FIREBASE (SESSÃO EM NUVEM)
   onAuthStateChanged(auth, (user) => {
@@ -276,14 +306,14 @@ const auth = getAuth(app);
     });
   };
 
-  function setupUserSession() {
+  async function setupUserSession() {
     $("currentUserName").textContent = currentUser;
-    // Define como Admin se o e-mail começar com sws
-   // Define como Admin apenas o e-mail infosolucoesse@gmail.com
     let isAdmin = currentUser.toLowerCase() === "infosolucoesse@gmail.com";
     $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
     $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
-    renderModules();
+    
+    // Busca os links das aulas salvos no banco de dados Firestore
+    await loadCourseDataFromCloud();
     updateOverallProgress();
   }
 
