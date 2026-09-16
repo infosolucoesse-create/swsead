@@ -279,9 +279,10 @@ const auth = getAuth(app);
   function setupUserSession() {
     $("currentUserName").textContent = currentUser;
     // Define como Admin se o e-mail começar com sws
-    let isSWS = currentUser.toLowerCase().includes("sws");
-    $("userRoleTag").textContent = isSWS ? "Administrador" : "Aluno";
-    $("btnAdmin").style.display = isSWS ? "inline-block" : "none";
+   // Define como Admin apenas o e-mail infosolucoesse@gmail.com
+    let isAdmin = currentUser.toLowerCase() === "infosolucoesse@gmail.com";
+    $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
+    $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
     renderModules();
     updateOverallProgress();
   }
@@ -319,7 +320,7 @@ const auth = getAuth(app);
 
   window.renderModules = () => {
     let search = $("searchInput").value.toLowerCase().trim();
-    let isSWS = currentUser?.toLowerCase().includes("sws");
+    let isAdmin = currentUser?.toLowerCase() === "infosolucoesse@gmail.com";
     let prog = getProgress();
     let html = "";
 
@@ -335,7 +336,7 @@ const auth = getAuth(app);
             <div class="subject-top">
               <span class="subject-title" onclick="openSubject('${s.id}')">${s.name}</span>
               <div>
-                ${isSWS ? `<button class="edit-btn" onclick="showLinkModal('${s.id}')">⚙️ Link</button>` : ''}
+                ${isAdmin ? `<button class="edit-btn" onclick="showLinkModal('${s.id}')">⚙️ Link</button>` : ''}
                 <button class="action-btn ${avail ? 'available' : ''}" onclick="openSubject('${s.id}')">
                   ${avail ? '▶ Assistir' : 'Indisponível'}
                 </button>
