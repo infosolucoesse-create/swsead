@@ -94,6 +94,7 @@
     .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
     .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
     .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
+    .link-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -169,6 +170,7 @@
       getAuth,   
       signInWithEmailAndPassword,   
       createUserWithEmailAndPassword,   
+      sendPasswordResetEmail,
       onAuthStateChanged,   
       signOut   
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -278,13 +280,42 @@
           </div>
         </div>
         <form id="formLogin">
-          <div class="form-group"><label>E-mail ou Nome de Usuário</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
+          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
           <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
+          <div style="text-align:center;">
+            <button type="button" class="link-btn" onclick="showResetModal()">Esqueceu a senha?</button>
+          </div>
           <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
         </form>
       `);
       $("formLogin").addEventListener("submit", handleLogin);
+    };
+
+    window.showResetModal = () => {
+      openModal(`
+        <h2>Recuperação de Senha</h2>
+        <p class="modal-subtitle">Digite seu nome de usuário ou e-mail cadastrado.</p>
+        <form id="formReset">
+          <div class="form-group"><label>Usuário ou E-mail</label><input type="text" id="resetInput" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" style="flex:1;">Enviar Link</button>
+            <button class="btn btn-secondary" type="button" onclick="showLoginModal()" style="flex:1;">Voltar</button>
+          </div>
+          <div class="error-msg" id="err">Usuário/E-mail não encontrado.</div>
+        </form>
+      `);
+      $("formReset").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        let email = resolveEmail($("resetInput").value);
+        try {
+          await sendPasswordResetEmail(auth, email);
+          alert("E-mail de redefinição enviado com sucesso para infosolucoesse@gmail.com!");
+          showLoginModal();
+        } catch (err) {
+          $("err").style.display = "block";
+        }
+      });
     };
 
     window.showRegisterModal = () => {
@@ -297,8 +328,8 @@
           </div>
         </div>
         <form id="formRegister">
-          <div class="form-group"><label>E-mail ou Nome de Usuário</label><input type="text" id="nu" placeholder="Ex: Marcos ou aluno@exemplo.com" required></div>
-          <div class="form-group"><label>Senha</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="nu" placeholder="Ex: marcos ou aluno@exemplo.com" required></div>
+          <div class="form-group"><label>Senha Inicial</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
           <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
             <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
@@ -332,9 +363,14 @@
       $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
     };
 
+    // Converte nome simples (ex: "anderson") em "infosolucoesse+anderson@gmail.com"
     function resolveEmail(input) {
-      let trimmed = input.trim();
-      return trimmed.includes('@') ? trimmed : `${trimmed.toLowerCase().replace(/\s+/g, '')}@sws-ead.internal`;
+      let trimmed = input.trim().toLowerCase();
+      if (trimmed.includes('@')) {
+        return trimmed;
+      }
+      let cleanName = trimmed.replace(/\s+/g, '');
+      return `infosolucoesse+${cleanName}@gmail.com`;
     }
 
     async function handleLogin(e) {
@@ -368,15 +404,14 @@
     };
 
     async function setupUserSession() {
-      let displayName = currentUser.endsWith('@sws-ead.internal')
-        ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1)
-        : currentUser;
+      let displayName = currentUser.includes('+') && currentUser.includes('@gmail.com')
+        ? currentUser.split('+')[1].split('@')[0].charAt(0).toUpperCase() + currentUser.split('+')[1].split('@')[0].slice(1)
+        : (currentUser.endsWith('@sws-ead.internal') ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1) : currentUser);
       
       $("currentUserName").textContent = displayName;
       
-      // Permite acesso administrativo para o e-mail antigo ou para o usuário curto "anderson"
       let emailLower = currentUser.toLowerCase();
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower === "anderson@sws-ead.internal";
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
       
       $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
@@ -419,7 +454,7 @@
     window.renderModules = () => {
       let search = $("searchInput").value.toLowerCase().trim();
       let emailLower = currentUser?.toLowerCase() || "";
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower === "anderson@sws-ead.internal";
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
       let prog = getProgress();
       let html = "";
 
@@ -566,7 +601,7 @@
     }
 
     window.closePlayer = () => {
-      stopProgressTracker();
+        stopProgressTracker();
       if (ytPlayer && typeof ytPlayer.destroy === 'function') {
         ytPlayer.destroy();
       }
