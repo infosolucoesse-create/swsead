@@ -119,24 +119,23 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
   </section>
 </main>
 
-<script type="module">
 // 1. IMPORTAÇÃO DO FIREBASE (v10+)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    onAuthStateChanged, 
-    signOut 
+  import {  
+    getAuth,   
+    signInWithEmailAndPassword,   
+    createUserWithEmailAndPassword,   
+    onAuthStateChanged,   
+    signOut   
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { 
-    getFirestore, 
-    doc, 
-    getDoc, 
-    setDoc 
+  import {  
+    getFirestore,   
+    doc,   
+    getDoc,   
+    setDoc   
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 2. COLE SUAS CONFIGURAÇÕES DO FIREBASE CONSOLE AQUI
+  // 2. CONFIGURAÇÕES DO FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
     authDomain: "sws-ead.firebaseapp.com",
@@ -147,7 +146,8 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
   };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app); // Inicializa o Firestore
+  const db = getFirestore(app);
+
   const initialCourseData = [
     { id: 1, name: "Módulo I", subjects: [
       { id: "m1_1", name: "Teologia", playlist: null }, { id: "m1_2", name: "Trindade", playlist: null },
@@ -183,17 +183,14 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
 
   const $ = id => document.getElementById(id);
 
-  // Salva a estrutura do curso no Firestore para TODOS os alunos
   async function saveCourseData() {
     try {
       await setDoc(doc(db, "cursos", "geral"), { modules: courseData });
-      console.log("Aulas atualizadas no banco de dados!");
     } catch (error) {
       console.error("Erro ao salvar no Firestore:", error);
     }
   }
 
-  // Carrega as aulas atualizadas da nuvem
   async function loadCourseDataFromCloud() {
     try {
       const docRef = doc(db, "cursos", "geral");
@@ -207,7 +204,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
     renderModules();
   }
 
-  // MONITORAR STATUS DE AUTENTICAÇÃO DO FIREBASE (SESSÃO EM NUVEM)
   onAuthStateChanged(auth, (user) => {
     if (user) {
       currentUser = user.email;
@@ -233,7 +229,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
         <div class="error-msg" id="err">Credenciais incorretas ou usuário inexistente!</div>
       </form>
     `);
-    
     $("formLogin").addEventListener("submit", handleLogin);
   };
 
@@ -248,7 +243,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
         <div class="error-msg" id="err">Erro ao cadastrar. Verifique os dados.</div>
       </form>
     `);
-
     $("formRegister").addEventListener("submit", handleRegister);
   };
 
@@ -267,12 +261,10 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
         <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
       </form>
     `);
-
     $("formLink").addEventListener("submit", (e) => handleSaveLink(e, subId));
     $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
   };
 
-  /* HANDLERS AUTENTICAÇÃO FIREBASE */
   async function handleLogin(e) {
     e.preventDefault();
     let email = $("u").value.trim(), senha = $("p").value.trim();
@@ -280,7 +272,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
       await signInWithEmailAndPassword(auth, email, senha);
       closeModal();
     } catch (error) {
-      console.error(error);
       $("err").style.display = "block";
       $("err").textContent = "Erro de login: " + error.message;
     }
@@ -294,16 +285,13 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
       alert(`Usuário '${email}' cadastrado com sucesso no Firebase!`);
       closeModal();
     } catch (error) {
-      console.error(error);
       $("err").style.display = "block";
       $("err").textContent = "Erro no cadastro: " + error.message;
     }
   }
 
   window.handleLogout = () => {
-    signOut(auth).then(() => {
-      location.reload();
-    });
+    signOut(auth).then(() => { location.reload(); });
   };
 
   async function setupUserSession() {
@@ -311,8 +299,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
     let isAdmin = currentUser.toLowerCase() === "infosolucoesse@gmail.com";
     $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
     $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
-    
-    // Busca os links das aulas salvos no banco de dados Firestore
     await loadCourseDataFromCloud();
     updateOverallProgress();
   }
@@ -385,6 +371,131 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
             <span>📌 ${m.name}</span><span>▼</span>
           </button>
           <div class="subjects">${subsHtml}</div>
+        </div>
+      `;
+    });
+    $("modulesContainer").innerHTML = html;
+  };
+
+  /* PLAYER E INTEGRAÇÃO YOUTUBE API */
+  let ytPlayer = null;
+  let progressInterval = null;
+  let pendingSubjectId = null;
+
+  if (!window.YT) {
+    let tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    let firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  }
+
+  window.onYouTubeIframeAPIReady = () => {
+    if (pendingSubjectId) {
+      window.openSubject(pendingSubjectId);
+      pendingSubjectId = null;
+    }
+  };
+
+  window.openSubject = (subId) => {
+    let sub = courseData.flatMap(m => m.subjects).find(s => s.id === subId);
+    if (!sub || !sub.playlist) return alert("Conteúdo indisponível.");
+
+    if (typeof YT === "undefined" || !YT.Player) {
+      pendingSubjectId = subId;
+      return;
+    }
+
+    activeSubjectId = subId;
+    let raw = sub.playlist;
+    let videoId = "";
+    let playlistId = "";
+
+    if (raw.includes("list=") || raw.startsWith("PL")) {
+      playlistId = raw.includes("list=") ? raw.split("list=")[1].split("&")[0] : raw;
+    } else {
+      videoId = raw.includes("v=") ? raw.split("v=")[1].split("&")[0] : raw;
+    }
+
+    $("playerTitle").textContent = sub.name;
+    $("playerArea").classList.add("active");
+    $("playerArea").scrollIntoView({ behavior: "smooth" });
+
+    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+      ytPlayer.destroy();
+    }
+
+    let playerVarsConfig = { autoplay: 1, rel: 0 };
+    if (playlistId) {
+      playerVarsConfig.listType = 'playlist';
+      playerVarsConfig.list = playlistId;
+    }
+
+    ytPlayer = new YT.Player('player', {
+      height: '100%',
+      width: '100%',
+      videoId: videoId || undefined,
+      playerVars: playerVarsConfig,
+      events: { 'onStateChange': onPlayerStateChange }
+    });
+
+    let p = getProgress()[subId] || 0;
+    $("simSlider").value = p;
+    $("simPercentText").textContent = p + "% assistido";
+  };
+
+  function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+      startProgressTracker();
+    } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+      stopProgressTracker();
+      calculateAndUpdateProgress();
+    }
+  }
+
+  function startProgressTracker() {
+    stopProgressTracker();
+    progressInterval = setInterval(() => {
+      calculateAndUpdateProgress();
+    }, 1000);
+  }
+
+  function stopProgressTracker() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+  }
+
+  function calculateAndUpdateProgress() {
+    if (!ytPlayer || !ytPlayer.getDuration || !activeSubjectId) return;
+    let duration = ytPlayer.getDuration();
+    let currentTime = ytPlayer.getCurrentTime();
+
+    if (duration > 0) {
+      let percent = Math.min(100, Math.round((currentTime / duration) * 100));
+      $("simSlider").value = percent;
+      $("simPercentText").textContent = percent + "% assistido";
+      
+      let currentSaved = getProgress()[activeSubjectId] || 0;
+      if (percent > currentSaved) {
+        setProgress(activeSubjectId, percent);
+      }
+    }
+  }
+
+  window.closePlayer = () => {
+    stopProgressTracker();
+    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+      ytPlayer.destroy();
+    }
+    $("playerArea").classList.remove("active");
+    activeSubjectId = null;
+  };
+
+  window.toggleTheme = () => {
+    let t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+  };          <div class="subjects">${subsHtml}</div>
         </div>
       `;
     });
