@@ -192,7 +192,7 @@
 
     const $ = id => document.getElementById(id);
 
-   async function saveCourseData() {
+    async function saveCourseData() {
       try {
         await setDoc(doc(db, "cursos", "geral"), { modules: courseData });
         renderModules();
@@ -208,14 +208,12 @@
         if (docSnap.exists() && docSnap.data().modules) {
           courseData = docSnap.data().modules;
         } else {
-          // Se não existir na nuvem ainda, salva a estrutura inicial
           await setDoc(docRef, { modules: initialCourseData });
         }
       } catch (error) {
         console.error("Erro ao carregar do Firestore:", error);
       }
       renderModules();
-    }
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -316,20 +314,22 @@
       updateOverallProgress();
     }
 
-  async function handleSaveLink(e, subId) {
+    async function handleSaveLink(e, subId) {
       e.preventDefault();
       let val = $("vLink").value.trim();
       courseData.flatMap(m => m.subjects).find(s => s.id === subId).playlist = val || null;
       await saveCourseData(); 
       closeModal();
     }
-  async function handleDeleteLink(subId) {
+
+    async function handleDeleteLink(subId) {
       if (!confirm("Remover o link desta aula?")) return;
       courseData.flatMap(m => m.subjects).find(s => s.id === subId).playlist = null;
       await saveCourseData(); 
       closeModal();
       if (activeSubjectId === subId) closePlayer();
     }
+
     const getProgress = () => JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}");
 
     function setProgress(subId, val) {
@@ -503,11 +503,10 @@
       activeSubjectId = null;
     };
 
-  window.toggleTheme = () => {
-  const currentTheme = document.documentElement.getAttribute("data-theme");
-  const newTheme = currentTheme === "light" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", newTheme);
-};
+    window.toggleTheme = () => {
+      let t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    };
   </script>
 </body>
 </html>
