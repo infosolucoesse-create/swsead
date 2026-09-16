@@ -192,9 +192,10 @@
 
     const $ = id => document.getElementById(id);
 
-    async function saveCourseData() {
+   async function saveCourseData() {
       try {
         await setDoc(doc(db, "cursos", "geral"), { modules: courseData });
+        renderModules();
       } catch (error) {
         console.error("Erro ao salvar no Firestore:", error);
       }
@@ -204,13 +205,17 @@
       try {
         const docRef = doc(db, "cursos", "geral");
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        if (docSnap.exists() && docSnap.data().modules) {
           courseData = docSnap.data().modules;
+        } else {
+          // Se não existir na nuvem ainda, salva a estrutura inicial
+          await setDoc(docRef, { modules: initialCourseData });
         }
       } catch (error) {
         console.error("Erro ao carregar do Firestore:", error);
       }
       renderModules();
+    }
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -311,20 +316,20 @@
       updateOverallProgress();
     }
 
-    function handleSaveLink(e, subId) {
+  async function handleSaveLink(e, subId) {
       e.preventDefault();
       let val = $("vLink").value.trim();
       courseData.flatMap(m => m.subjects).find(s => s.id === subId).playlist = val || null;
-      saveCourseData(); closeModal(); renderModules();
+      await saveCourseData(); 
+      closeModal();
     }
-
-    function handleDeleteLink(subId) {
+  async function handleDeleteLink(subId) {
       if (!confirm("Remover o link desta aula?")) return;
       courseData.flatMap(m => m.subjects).find(s => s.id === subId).playlist = null;
-      saveCourseData(); closeModal(); renderModules();
+      await saveCourseData(); 
+      closeModal();
       if (activeSubjectId === subId) closePlayer();
     }
-
     const getProgress = () => JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}");
 
     function setProgress(subId, val) {
