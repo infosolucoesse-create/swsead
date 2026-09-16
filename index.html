@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR" data-theme="light">  
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -102,19 +102,19 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
 
   <section class="modules" id="modulesContainer"></section>
 
-  <section class="player-area" id="playerArea">
+<section class="player-area" id="playerArea">
     <div class="player-header">
       <h3 id="playerTitle" style="margin:0;">Aula</h3>
       <button class="btn-sm" style="background:var(--danger); border:none;" onclick="closePlayer()">✕ Fechar</button>
     </div>
     <div class="video-container">
-      <iframe id="player" src="" allowfullscreen></iframe>
+      <div id="player"></div>
     </div>
     <div class="video-controls">
       <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
         <span>⏱️ Progresso da Aula</span><span id="simPercentText">0% assistido</span>
       </div>
-      <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:var(--primary);" id="simSlider" oninput="updateVideoProgress(this.value)">
+      <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:var(--primary);" id="simSlider" disabled>
     </div>
   </section>
 </main>
@@ -391,46 +391,6 @@ header { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: #fff; pad
     $("modulesContainer").innerHTML = html;
   };
 
-  /* PLAYER */
-  window.openSubject = (subId) => {
-    let sub = courseData.flatMap(m => m.subjects).find(s => s.id === subId);
-    if (!sub || !sub.playlist) return alert("Conteúdo indisponível.");
-
-    activeSubjectId = subId;
-    let raw = sub.playlist, embed = "";
-    if (raw.includes("list=") || raw.startsWith("PL")) {
-      let listId = raw.includes("list=") ? raw.split("list=")[1].split("&")[0] : raw;
-      embed = `https://www.youtube.com/embed/videoseries?list=${listId}`;
-    } else {
-      let vidId = raw.includes("v=") ? raw.split("v=")[1].split("&")[0] : raw;
-      embed = `https://www.youtube.com/embed/${vidId}`;
-    }
-
-    $("playerTitle").textContent = sub.name;
-    $("player").src = embed;
-    let p = getProgress()[subId] || 0;
-    $("simSlider").value = p;
-    $("simPercentText").textContent = p + "% assistido";
-    $("playerArea").classList.add("active");
-    $("playerArea").scrollIntoView({ behavior: "smooth" });
-  };
-
-  window.closePlayer = () => {
-    $("playerArea").classList.remove("active");
-    $("player").src = "";
-    activeSubjectId = null;
-  };
-
-  window.updateVideoProgress = (v) => {
-    if (!activeSubjectId) return;
-    $("simPercentText").textContent = v + "% assistido";
-    setProgress(activeSubjectId, v);
-  };
-
-  window.toggleTheme = () => {
-    let t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", t);
-  };
 </script>
 </body>
 </html>
