@@ -87,7 +87,7 @@
 
     .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(5, 8, 15, 0.85); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
     .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-    .modal h2 { margin-bottom: 6px; font-size: 20px; font-weight: 700; }
+    .modal h2 { margin-bottom: 2px; font-size: 18px; font-weight: 700; }
     .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 500; }
@@ -270,8 +270,13 @@
 
     window.showLoginModal = () => {
       openModal(`
-        <h2>Seminário William Seymour</h2>
-        <p class="modal-subtitle">Entre com suas credenciais para acessar os cursos.</p>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div>
+            <h2>Seminário William Seymour</h2>
+            <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
+          </div>
+        </div>
         <form id="formLogin">
           <div class="form-group"><label>E-mail</label><input type="email" id="u" placeholder="seuemail@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
@@ -284,8 +289,13 @@
 
     window.showRegisterModal = () => {
       openModal(`
-        <h2>Cadastrar Aluno</h2>
-        <p class="modal-subtitle">Adicione um novo usuário ao sistema.</p>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div>
+            <h2>Cadastrar Aluno</h2>
+            <p class="modal-subtitle" style="margin: 0;">Adicione um novo usuário.</p>
+          </div>
+        </div>
         <form id="formRegister">
           <div class="form-group"><label>E-mail do Aluno</label><input type="email" id="nu" placeholder="aluno@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
@@ -531,8 +541,9 @@
         $("simSlider").value = percent;
         $("simPercentText").textContent = percent + "% assistido";
         
-        let currentSaved = getProgress()[activeSubjectId] || 0;
-        if (percent > currentSaved) {
+        let currentSaved = getProgress()[activeSpaceId = activeSubjectId] || 0; // fallback safe
+        let currentSavedVal = getProgress()[activeSubjectId] || 0;
+        if (percent > currentSavedVal) {
           setProgress(activeSubjectId, percent);
         }
       }
