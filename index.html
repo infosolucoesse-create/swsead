@@ -154,7 +154,7 @@
     </div>
 
     <div class="controls">
-      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar disciplina..." oninput="renderModules()">
+      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar disciplina ou capítulo..." oninput="renderModules()">
     </div>
 
     <div id="modulesContainer"></div>
@@ -195,8 +195,16 @@
 
     const initialCourseData = [
       { id: 1, name: "Módulo I", subjects: [
-        { id: "m1_1", name: "Teologia", playlist: null }, { id: "m1_2", name: "Trindade", playlist: null },
-        { id: "m1_3", name: "Cristologia", playlist: null }, { id: "m1_4", name: "Pneumatologia", playlist: null }
+        { id: "m1_teo_intro", name: "Teologia: Introdução", playlist: null },
+        { id: "m1_teo_cap1", name: "Capítulo 1: A existência e a revelação de Deus - Teologia", playlist: null },
+        { id: "m1_teo_cap2", name: "Capítulo 2: Os atributos e a sua criação - Teologia", playlist: null },
+        { id: "m1_teo_cap3", name: "Capítulo 3: Os decretos e a providência de Deus - Teologia", playlist: null },
+        { id: "m1_teo_cap4", name: "Capítulo 4: Os nomes de Deus e os Credos - Teologia", playlist: null },
+        { id: "m1_teo_cap5", name: "Capítulo 5: A Santíssima Trindade - Teologia", playlist: null },
+        { id: "m1_teo_conc", name: "Teologia: Conclusão", playlist: null },
+        { id: "m1_cristo", name: "Cristologia", playlist: null },
+        { id: "m1_pneumat", name: "Pneumatologia", playlist: null },
+        { id: "m1_etica", name: "Ética Cristã", playlist: null }
       ]},
       { id: 2, name: "Módulo II", subjects: [
         { id: "m2_1", name: "Introdução Bíblica", playlist: null }, { id: "m2_2", name: "Panorama do AT", playlist: null },
@@ -310,7 +318,7 @@
         let email = resolveEmail($("resetInput").value);
         try {
           await sendPasswordResetEmail(auth, email);
-          alert("E-mail de redefinição enviado com sucesso para infosolucoesse@gmail.com!");
+          alert("E-mail de redefinição enviado com sucesso!");
           showLoginModal();
         } catch (err) {
           $("err").style.display = "block";
@@ -343,7 +351,7 @@
     window.showLinkModal = (subId) => {
       let sub = courseData.flatMap(m => m.subjects).find(s => s.id === subId);
       openModal(`
-        <h2>Editar Aula</h2>
+        <h2>Editar Aula / Capítulo</h2>
         <p class="modal-subtitle">${sub.name}</p>
         <form id="formLink">
           <div class="form-group">
@@ -353,7 +361,7 @@
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
             <button class="btn btn-primary" type="submit">💾 Salvar Alterações</button>
             <div style="display:flex; gap:10px;">
-              <button class="btn btn-danger" type="button" id="btnDeleteLink" style="flex:1;">🗑️ Remover Link</button>
+              <button class="btn btn-danger" type="button" id="btnDeleteLink" style="flex:1;">🗑 Remover Link</button>
               <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
             </div>
           </div>
@@ -363,7 +371,6 @@
       $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
     };
 
-    // Converte nome simples (ex: "anderson") em "infosolucoesse+anderson@gmail.com"
     function resolveEmail(input) {
       let trimmed = input.trim().toLowerCase();
       if (trimmed.includes('@')) {
@@ -601,7 +608,7 @@
     }
 
     window.closePlayer = () => {
-        stopProgressTracker();
+      stopProgressTracker();
       if (ytPlayer && typeof ytPlayer.destroy === 'function') {
         ytPlayer.destroy();
       }
