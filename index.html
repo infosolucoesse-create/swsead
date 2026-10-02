@@ -238,7 +238,7 @@
 
     async function saveCourseData() {
       try {
-        await setDoc(doc(db, "cursos", "geral"), { modules: courseData });
+        await setDoc(doc(db, "cursos", "geral_v2"), { modules: courseData });
         renderModules();
       } catch (error) {
         console.error("Erro ao salvar no Firestore:", error);
@@ -247,7 +247,7 @@
 
     async function loadCourseDataFromCloud() {
       try {
-        const docRef = doc(db, "cursos", "geral");
+        const docRef = doc(db, "cursos", "geral_v2");
         const docSnap = await getDoc(docRef);
         if (docSnap.exists() && docSnap.data().modules) {
           courseData = docSnap.data().modules;
