@@ -415,6 +415,11 @@
     window.closeModal = () => { $("modalOverlay").style.display = "none"; };
     window.openModal = (html) => { $("modalContent").innerHTML = html; $("modalOverlay").style.display = "flex"; };
 
+    window.toggleTheme = () => {
+      const html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    };
+
     window.showLoginModal = () => {
       openModal(`
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
@@ -543,8 +548,11 @@
       }
     }
 
-    window.handleLogout = () => {
-      signOut(auth).then(() => { location.reload(); });
+    window.handleLogout = async () => {
+      await flushProgress();
+      progressCache = {};
+      await signOut(auth);
+      location.reload();
     };
 
     async function setupUserSession() {
@@ -559,7 +567,8 @@
       
       $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
-      await loadCourseDataFromCloud();
+      await loadProgressFromCloud();
+      await loadCourseDataFromCloud();   // já chama renderModules()
       updateOverallProgress();
     }
 
@@ -591,13 +600,71 @@
       if (activeSubjectId === subId) closePlayer();
     }
 
-    const getProgress = () => JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}");
+    // ===== PROGRESSO NA NUVEM (Firestore: progresso/{uid}) =====
+    let progressCache = {};
+    let progressDirty = false;
+    let progressTimer = null;
+
+    const getProgress = () => progressCache;
+
+    const progressRef = () => doc(db, "progresso", auth.currentUser.uid);
+
+    async function loadProgressFromCloud() {
+      let local = {};
+      try { local = JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}"); } catch {}
+
+      let cloud = {};
+      let cloudOk = true;
+      try {
+        const snap = await getDoc(progressRef());
+        if (snap.exists()) cloud = snap.data().aulas || {};
+      } catch (err) {
+        cloudOk = false;
+        console.error("Erro ao carregar progresso:", err);
+      }
+
+      // Mantém sempre o maior valor entre nuvem e local (aproveita o progresso antigo)
+      const merged = { ...cloud };
+      for (const [id, v] of Object.entries(local)) {
+        merged[id] = Math.max(merged[id] || 0, v);
+      }
+      progressCache = merged;
+
+      // Se o local tinha algo a mais, sobe para a nuvem
+      if (cloudOk && JSON.stringify(merged) !== JSON.stringify(cloud)) {
+        progressDirty = true;
+        await flushProgress();
+      }
+    }
+
+    async function flushProgress() {
+      clearTimeout(progressTimer);
+      progressTimer = null;
+      if (!progressDirty || !auth.currentUser) return;
+      progressDirty = false;
+      try {
+        await setDoc(progressRef(), { aulas: progressCache, atualizadoEm: Date.now() }, { merge: true });
+      } catch (err) {
+        progressDirty = true;
+        console.error("Erro ao salvar progresso:", err);
+      }
+    }
 
     function setProgress(subId, val) {
-      let p = getProgress(); p[subId] = parseInt(val, 10);
-      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(p));
-      updateOverallProgress(); renderModules();
+      const v = parseInt(val, 10);
+      if ((progressCache[subId] || 0) >= v) return;
+      progressCache[subId] = v;
+      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progressCache)); // backup offline
+      progressDirty = true;
+      if (!progressTimer) progressTimer = setTimeout(flushProgress, 5000); // grava no máx. a cada 5s
+      updateOverallProgress();
+      renderModules();
     }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushProgress();
+    });
+    window.addEventListener("pagehide", flushProgress);
 
     function updateOverallProgress() {
       let p = getProgress(), subs = getAllLessons();
@@ -691,6 +758,7 @@
     };
 
     window.closePlayer = () => {
+      flushProgress();
       if (progressInterval) clearInterval(progressInterval);
       if (ytPlayer && typeof ytPlayer.destroy === 'function') {
         ytPlayer.destroy();
@@ -768,11 +836,13 @@
               startProgressTracker(subId);
             } else if (event.data === YT.PlayerState.PAUSED) {
               if (progressInterval) clearInterval(progressInterval);
+              flushProgress();
             } else if (event.data === YT.PlayerState.ENDED) {
               if (progressInterval) clearInterval(progressInterval);
               if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
               if ($("simSlider")) $("simSlider").value = 100;
               setProgress(subId, 100);
+              flushProgress();
             }
           }
         }
