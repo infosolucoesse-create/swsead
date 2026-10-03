@@ -83,21 +83,38 @@
     .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
     .action-btn.available { background-color: var(--accent); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
     .action-btn.available:hover { filter: brightness(1.1); }
+    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px; }
+    .edit-btn:hover { color: var(--text-main); }
 
     .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
     .player-section.active { display: block; animation: fadeIn 0.3s ease; }
     .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background-color: #000; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .video-container iframe, .video-container #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
+    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(5, 8, 15, 0.85); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
+    .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .modal h2 { margin-bottom: 2px; font-size: 18px; font-weight: 700; }
+    .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 500; }
+    .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
+    .link-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
 <body>
 
-  <div class="container active" id="mainContainer">
+  <div class="container" id="mainContainer">
     <header>
       <div class="brand-section">
         <img src="logo.jpg" alt="Logo Seminário William Seymour" class="brand-logo">
@@ -108,10 +125,11 @@
       </div>
       <div class="header-actions">
         <div class="user-info">
-          <span id="currentUserName">Aluno</span>
-          <span class="role-badge" id="userRoleTag">EAD</span>
+          <span id="currentUserName">Carregando...</span>
+          <span class="role-badge" id="userRoleTag">...</span>
         </div>
         <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
+        <button class="btn btn-secondary" id="btnAdmin" style="display:none;" onclick="showRegisterModal()">+ Aluno</button>
         <button class="btn btn-danger" onclick="handleLogout()">Sair</button>
       </div>
     </header>
@@ -119,10 +137,10 @@
     <div class="overall-progress">
       <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
         <span>Progresso Geral do Curso</span>
-        <span id="overallPercentText">0%</span>
+        <span id="overallPercent">0%</span>
       </div>
       <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="overallProgressBar"></div>
+        <div class="progress-bar-fill" id="overallBar"></div>
       </div>
     </div>
 
@@ -137,223 +155,525 @@
       <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
         <span>Progresso do Vídeo:</span>
         <span id="simPercentText">0% assistido</span>
+        <input type="hidden" id="simSlider" value="0">
       </div>
     </div>
 
     <div class="controls">
-      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar matéria ou capítulo..." oninput="window.renderModules()">
+      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar matéria ou capítulo..." oninput="renderModules()">
     </div>
 
     <div id="modulesContainer"></div>
   </div>
 
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {  
+      getAuth,   
+      signInWithEmailAndPassword,   
+      createUserWithEmailAndPassword,   
+      sendPasswordResetEmail,
+      onAuthStateChanged,   
+      signOut   
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import {  
+      getFirestore,   
+      doc,   
+      getDoc,   
+      setDoc   
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 1. CONFIGURAÇÃO DO FIREBASE (substitua com suas chaves se necessário)
     const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_PROJETO.firebaseapp.com",
-      projectId: "SEU_PROJETO",
-      storageBucket: "SEU_PROJETO.appspot.com",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
+      apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
+      authDomain: "sws-ead.firebaseapp.com",
+      projectId: "sws-ead",
+      storageBucket: "sws-ead.firebasestorage.app",
+      messagingSenderId: "175788775189",
+      appId: "1:175788775189:web:8952b0f3eba14c4355bb1c"
     };
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // 2. CONTEÚDO DOS MÓDULOS E MATÉRIAS
-    const modulesData = [
+    const initialCourseData = [
       {
-        id: "m1",
-        title: "Módulo I - Teologia Básica",
+        id: 1,
+        name: "Módulo I",
         materias: [
           {
-            title: "Bibliologia",
+            id: "mat_teo",
+            title: "Teologia",
             lessons: [
-              { id: "b1", name: "Aula 1 - Introdução à Bíblia", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-              { id: "b2", name: "Aula 2 - Estrutura e Divisão", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+              { id: "m1_teo_intro", name: "Introdução", playlist: null },
+              { id: "m1_teo_cap1", name: "Capítulo 1: A existência e a revelação de Deus", playlist: null },
+              { id: "m1_teo_cap2", name: "Capítulo 2: Os atributos e a sua criação", playlist: null },
+              { id: "m1_teo_cap3", name: "Capítulo 3: Os decretos e a providência de Deus", playlist: null },
+              { id: "m1_teo_cap4", name: "Capítulo 4: Os nomes de Deus e os Credos", playlist: null },
+              { id: "m1_teo_cap5", name: "Capítulo 5: A Santíssima Trindade", playlist: null },
+              { id: "m1_teo_conc", name: "Conclusão", playlist: null }
+            ]
+          },
+          {
+            id: "mat_cristo",
+            title: "Cristologia",
+            lessons: [
+              { id: "m1_cristo_1", name: "Capítulo 1: A Pessoa de Cristo", playlist: null }
+            ]
+          },
+          {
+            id: "mat_pneumat",
+            title: "Pneumatologia",
+            lessons: [
+              { id: "m1_pneumat_1", name: "Capítulo 1: O Espírito Santo", playlist: null }
+            ]
+          },
+          {
+            id: "mat_etica",
+            title: "Ética Cristã",
+            lessons: [
+              { id: "m1_etica_1", name: "Capítulo 1: Fundamentos da Ética", playlist: null }
             ]
           }
+        ]
+      },
+      {
+        id: 2,
+        name: "Módulo II",
+        materias: [
+          {
+            id: "mat_m2_1", title: "Introdução Bíblica",
+            lessons: [{ id: "m2_1_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m2_2", title: "Panorama do AT",
+            lessons: [{ id: "m2_2_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m2_3", title: "Período Interbíblico",
+            lessons: [{ id: "m2_3_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m2_4", title: "Panorama do NT",
+            lessons: [{ id: "m2_4_1", name: "Aulas da Disciplina", playlist: null }]
+          }
+        ]
+      },
+      {
+        id: 3,
+        name: "Módulo III",
+        materias: [
+          {
+            id: "mat_m3_1", title: "Geografia Bíblica",
+            lessons: [{ id: "m3_1_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m3_2", title: "História de Israel",
+            lessons: [{ id: "m3_2_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m3_3", title: "História da Igreja",
+            lessons: [{ id: "m3_3_1", name: "Aulas da Disciplina", playlist: null }]
+          },
+          {
+            id: "mat_m3_4", title: "Eclesiologia",
+            lessons: [{ id: "m3_4_1", name: "Aulas da Disciplina", playlist: null }]
+          }
+        ]
+      },
+      {
+        id: 4,
+        name: "Módulo IV",
+        materias: [
+          {
+            id: "mat_m4_1", title: "Hermenêutica",
+            lessons: [{ id: "m4_1", name: "Aulas de Hermenêutica", playlist: "PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke" }]
+          },
+          {
+            id: "mat_m4_2", title: "Homilética",
+            lessons: [{ id: "m4_2", name: "Aulas de Homilética", playlist: "PLYTvo-pfIcGLsefbBMkuzDippSDowKruJ" }]
+          },
+          {
+            id: "mat_m4_3", title: "Evangelismo",
+            lessons: [{ id: "m4_3", name: "Aulas de Evangelismo", playlist: "PLYTvo-pfIcGJyW6W3p3nkJqcaeqiMp2Gv" }]
+          },
+          {
+            id: "mat_m4_4", title: "Missiologia",
+            lessons: [{ id: "m4_4", name: "Aulas de Missiologia", playlist: "PLYTvo-pfIcGK4Wb1MOFoEg6IObRbS8YxG" }]
+          }
+        ]
+      },
+      {
+        id: 5,
+        name: "Módulo V",
+        materias: [
+          { id: "mat_m5_1", title: "Antropologia", lessons: [{ id: "m5_1", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m5_2", title: "Hamartiologia", lessons: [{ id: "m5_2", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m5_3", title: "Angelologia", lessons: [{ id: "m5_3", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m5_4", title: "Família Cristã", lessons: [{ id: "m5_4", name: "Aulas da Disciplina", playlist: null }] }
+        ]
+      },
+      {
+        id: 6,
+        name: "Módulo VI",
+        materias: [
+          { id: "mat_m6_1", title: "Escatologia", lessons: [{ id: "m6_1", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m6_2", title: "Soteriologia", lessons: [{ id: "m6_2", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m6_3", title: "Liturgia Cristã", lessons: [{ id: "m6_3", name: "Aulas da Disciplina", playlist: null }] },
+          { id: "mat_m6_4", title: "Língua Portuguesa", lessons: [{ id: "m6_4", name: "Aulas da Disciplina", playlist: null }] }
         ]
       }
     ];
 
-    // ESTADO LOCAL DO PROGRESSO
-    let userProgressCache = {};
-    let ytPlayer = null;
-    let progressInterval = null;
-    let maxWatchedTime = 0;
+    let courseData = initialCourseData;
+    let currentUser = null;
     let activeSubjectId = null;
 
-    const $ = (id) => document.getElementById(id);
+    const $ = id => document.getElementById(id);
 
-    // -----------------------------------------------------------------
-    // FUNÇÕES DO FIREBASE (Leitura e Escrita na Nuvem)
-    // -----------------------------------------------------------------
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        if ($("currentUserName")) $("currentUserName").textContent = user.displayName || user.email;
-        await loadProgressFromCloud(user.uid);
-      } else {
-        userProgressCache = {};
-        window.renderModules();
-        updateOverallProgressUI();
-      }
-    });
-
-    // Carrega o progresso salvo na nuvem
-    async function loadProgressFromCloud(uid) {
-      try {
-        const docRef = doc(db, "usersProgress", uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          userProgressCache = docSnap.data().lessons || {};
-        }
-      } catch (err) {
-        console.error("Erro ao carregar do Firestore:", err);
-      } finally {
-        window.renderModules();
-        updateOverallProgressUI();
-      }
-    }
-
-    // Salva a porcentagem atual na nuvem
-    async function saveProgressToCloud(subId, percent) {
-      const user = auth.currentUser;
-      if (!user) return;
-      try {
-        const docRef = doc(db, "usersProgress", user.uid);
-        await setDoc(docRef, {
-          lessons: { [subId]: percent },
-          lastUpdated: new Date()
-        }, { merge: true });
-      } catch (err) {
-        console.error("Erro ao salvar no Firestore:", err);
-      }
-    }
-
-    // Atualiza estado local e chama o salvamento na nuvem
-    window.setProgress = (subId, percent) => {
-      userProgressCache[subId] = percent;
-      updateOverallProgressUI();
-      window.renderModules();
-      saveProgressToCloud(subId, percent);
-    };
-
-    window.getProgress = () => userProgressCache;
-
-    // -----------------------------------------------------------------
-    // INTERFACE E RENDERIZAÇÃO
-    // -----------------------------------------------------------------
-    window.getAllLessons = () => {
-      let lessons = [];
-      modulesData.forEach(m => {
-        m.materias.forEach(mat => {
-          mat.lessons.forEach(l => {
-            lessons.push({ ...l, materiaTitle: mat.title });
-          });
-        });
-      });
-      return lessons;
-    };
-
-    window.toggleTheme = () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      document.documentElement.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
-    };
-
-    window.handleLogout = () => {
-      signOut(auth).then(() => location.reload());
-    };
-
-    function updateOverallProgressUI() {
-      const allLessons = window.getAllLessons();
-      if (!allLessons || allLessons.length === 0) return;
-
-      let totalPercent = 0;
-      allLessons.forEach(lesson => {
-        totalPercent += (userProgressCache[lesson.id] || 0);
-      });
-
-      const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
-      if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
-      if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
-    }
-
-    window.renderModules = () => {
-      const container = $("modulesContainer");
-      if (!container) return;
-      
-      const filter = ($("searchInput") ? $("searchInput").value : "").toLowerCase();
-      container.innerHTML = "";
-
-      modulesData.forEach(mod => {
-        let hasMatches = false;
-        let moduleHtml = `<div class="module open">
-          <button class="module-toggle" onclick="this.parentElement.classList.toggle('open')">
-            <span>${mod.title}</span>
-            <span>▾</span>
-          </button>
-          <div class="module-content">`;
-
-        mod.materias.forEach(mat => {
-          const filteredLessons = mat.lessons.filter(l => 
-            l.name.toLowerCase().includes(filter) || mat.title.toLowerCase().includes(filter)
-          );
-
-          if (filteredLessons.length > 0) {
-            hasMatches = true;
-            moduleHtml += `<div class="materia-block">
-              <div class="materia-header">📘 ${mat.title}</div>
-              <div class="subjects-grid">`;
-
-            filteredLessons.forEach(l => {
-              const prog = userProgressCache[l.id] || 0;
-              moduleHtml += `
-                <div class="subject-card">
-                  <div class="subject-top">
-                    <span class="subject-title" onclick="window.openSubject('${l.id}')">${l.name}</span>
-                    <button class="action-btn available" onclick="window.openSubject('${l.id}')">
-                      ${prog === 100 ? 'Concluído' : prog > 0 ? prog + '%' : 'Assistir'}
-                    </button>
-                  </div>
-                </div>`;
-            });
-
-            moduleHtml += `</div></div>`;
-          }
-        });
-
-        moduleHtml += `</div></div>`;
-        if (hasMatches || !filter) {
-          container.innerHTML += moduleHtml;
-        }
-      });
-    };
-
-    // -----------------------------------------------------------------
-    // PLAYER DO YOUTUBE E MONITORAÇÃO DO VÍDEO
-    // -----------------------------------------------------------------
     function parseYouTubeUrl(url) {
-      if (!url) return { videoId: null, playlistId: null };
-      let videoId = null;
-      let playlistId = null;
+      if (!url) return { videoId: "", playlistId: "" };
+      let str = url.trim();
+      let playlistId = "";
+      let videoId = "";
 
-      const playlistMatch = url.match(/[?&]list=([^#&?]+)/);
-      if (playlistMatch) playlistId = playlistMatch[1];
+      if (str.includes("list=")) {
+        playlistId = str.split("list=")[1].split("&")[0];
+      } else if (str.startsWith("PL")) {
+        playlistId = str;
+      }
 
-      const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-      if (videoMatch) videoId = videoMatch[1];
+      if (str.includes("youtu.be/")) {
+        videoId = str.split("youtu.be/")[1].split("?")[0].split("&")[0];
+      } else if (str.includes("v=")) {
+        videoId = str.split("v=")[1].split("&")[0];
+      } else if (!playlistId && str.length === 11) {
+        videoId = str;
+      }
 
       return { videoId, playlistId };
     }
 
-    // Carrega a API do YouTube
+    function getAllLessons() {
+      let list = [];
+      courseData.forEach(m => {
+        if (m.materias) {
+          m.materias.forEach(mat => {
+            if (mat.lessons) {
+              mat.lessons.forEach(l => {
+                list.push({ ...l, materiaTitle: mat.title });
+              });
+            }
+          });
+        }
+      });
+      return list;
+    }
+
+    async function saveCourseData() {
+      try {
+        await setDoc(doc(db, "cursos", "geral_v3"), { modules: courseData });
+        renderModules();
+      } catch (error) {
+        console.error("Erro ao salvar no Firestore:", error);
+      }
+    }
+
+    async function loadCourseDataFromCloud() {
+      try {
+        const docRef = doc(db, "cursos", "geral_v3");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().modules) {
+          courseData = docSnap.data().modules;
+        } else {
+          await setDoc(docRef, { modules: initialCourseData });
+        }
+      } catch (error) {
+        console.error("Erro ao carregar do Firestore:", error);
+      }
+      renderModules();
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user.email;
+        closeModal();
+        $("mainContainer").classList.add("active");
+        document.body.style.justifyContent = "flex-start";
+        setupUserSession();
+      } else {
+        currentUser = null;
+        $("mainContainer").classList.remove("active");
+        document.body.style.justifyContent = "center";
+        showLoginModal();
+      }
+    });
+
+    window.closeModal = () => { $("modalOverlay").style.display = "none"; };
+    window.openModal = (html) => { $("modalContent").innerHTML = html; $("modalOverlay").style.display = "flex"; };
+
+    window.showLoginModal = () => {
+      openModal(`
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div>
+            <h2>Seminário William Seymour</h2>
+            <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
+          </div>
+        </div>
+        <form id="formLogin">
+          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
+          <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
+          <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
+          <div style="text-align:center;">
+            <button type="button" class="link-btn" onclick="showResetModal()">Esqueceu a senha?</button>
+          </div>
+          <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
+        </form>
+      `);
+      $("formLogin").addEventListener("submit", handleLogin);
+    };
+
+    window.showResetModal = () => {
+      openModal(`
+        <h2>Recuperação de Senha</h2>
+        <p class="modal-subtitle">Digite seu nome de usuário ou e-mail cadastrado.</p>
+        <form id="formReset">
+          <div class="form-group"><label>Usuário ou E-mail</label><input type="text" id="resetInput" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" style="flex:1;">Enviar Link</button>
+            <button class="btn btn-secondary" type="button" onclick="showLoginModal()" style="flex:1;">Voltar</button>
+          </div>
+          <div class="error-msg" id="err">Usuário/E-mail não encontrado.</div>
+        </form>
+      `);
+      $("formReset").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        let email = resolveEmail($("resetInput").value);
+        try {
+          await sendPasswordResetEmail(auth, email);
+          alert("E-mail de redefinição enviado com sucesso!");
+          showLoginModal();
+        } catch (err) {
+          $("err").style.display = "block";
+        }
+      });
+    };
+
+    window.showRegisterModal = () => {
+      openModal(`
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div>
+            <h2>Cadastrar Aluno</h2>
+            <p class="modal-subtitle" style="margin: 0;">Adicione um novo usuário.</p>
+          </div>
+        </div>
+        <form id="formRegister">
+          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="nu" placeholder="Ex: marcos ou aluno@exemplo.com" required></div>
+          <div class="form-group"><label>Senha Inicial</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
+            <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
+          </div>
+          <div class="error-msg" id="err">Erro ao cadastrar usuário.</div>
+        </form>
+      `);
+      $("formRegister").addEventListener("submit", handleRegister);
+    };
+
+    window.showLinkModal = (subId) => {
+      let sub = getAllLessons().find(s => s.id === subId);
+      openModal(`
+        <h2>Editar Aula / Capítulo</h2>
+        <p class="modal-subtitle">${sub ? sub.name : ''}</p>
+        <form id="formLink">
+          <div class="form-group">
+            <label>Link do Vídeo ou Playlist do YouTube</label>
+            <input type="text" id="vLink" value="${sub?.playlist || ''}" placeholder="Cole o link do YouTube aqui">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit">💾 Salvar Alterações</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-danger" type="button" id="btnDeleteLink" style="flex:1;">🗑 Remover Link</button>
+              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+        </form>
+      `);
+      $("formLink").addEventListener("submit", (e) => handleSaveLink(e, subId));
+      $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
+    };
+
+    function resolveEmail(input) {
+      let trimmed = input.trim().toLowerCase();
+      if (trimmed.includes('@')) {
+        return trimmed;
+      }
+      let cleanName = trimmed.replace(/\s+/g, '');
+      return `infosolucoesse+${cleanName}@gmail.com`;
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      let email = resolveEmail($("u").value);
+      let senha = $("p").value.trim();
+      try {
+        await signInWithEmailAndPassword(auth, email, senha);
+        closeModal();
+      } catch (error) {
+        $("err").style.display = "block";
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      let rawInput = $("nu").value.trim();
+      let email = resolveEmail(rawInput);
+      let senha = $("np").value.trim();
+      try {
+        await createUserWithEmailAndPassword(auth, email, senha);
+        alert(`Usuário '${rawInput}' cadastrado com sucesso!`);
+        closeModal();
+      } catch (error) {
+        $("err").style.display = "block";
+      }
+    }
+
+    window.handleLogout = () => {
+      signOut(auth).then(() => { location.reload(); });
+    };
+
+    async function setupUserSession() {
+      let displayName = currentUser.includes('+') && currentUser.includes('@gmail.com')
+        ? currentUser.split('+')[1].split('@')[0].charAt(0).toUpperCase() + currentUser.split('+')[1].split('@')[0].slice(1)
+        : (currentUser.endsWith('@sws-ead.internal') ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1) : currentUser);
+      
+      $("currentUserName").textContent = displayName;
+      
+      let emailLower = currentUser.toLowerCase();
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
+      
+      $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
+      $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
+      await loadCourseDataFromCloud();
+      updateOverallProgress();
+    }
+
+    async function handleSaveLink(e, subId) {
+      e.preventDefault();
+      let val = $("vLink").value.trim();
+      courseData.forEach(m => {
+        m.materias?.forEach(mat => {
+          mat.lessons?.forEach(l => {
+            if (l.id === subId) l.playlist = val || null;
+          });
+        });
+      });
+      await saveCourseData(); 
+      closeModal();
+    }
+
+    async function handleDeleteLink(subId) {
+      if (!confirm("Remover o link desta aula?")) return;
+      courseData.forEach(m => {
+        m.materias?.forEach(mat => {
+          mat.lessons?.forEach(l => {
+            if (l.id === subId) l.playlist = null;
+          });
+        });
+      });
+      await saveCourseData(); 
+      closeModal();
+      if (activeSubjectId === subId) closePlayer();
+    }
+
+    const getProgress = () => JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}");
+
+    function setProgress(subId, val) {
+      let p = getProgress(); p[subId] = parseInt(val, 10);
+      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(p));
+      updateOverallProgress(); renderModules();
+    }
+
+    function updateOverallProgress() {
+      let p = getProgress(), subs = getAllLessons();
+      if (!subs.length) return;
+      let sum = subs.reduce((acc, s) => acc + (p[s.id] || 0), 0);
+      let total = Math.round(sum / subs.length) || 0;
+      $("overallBar").style.width = total + "%";
+      $("overallPercent").textContent = total + "%";
+    }
+
+    window.renderModules = () => {
+      let search = $("searchInput").value.toLowerCase().trim();
+      let emailLower = currentUser?.toLowerCase() || "";
+      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
+      let prog = getProgress();
+      let html = "";
+
+      courseData.forEach(m => {
+        let materiasHtml = "";
+        let moduleHasMatches = false;
+
+        m.materias.forEach(mat => {
+          let filteredLessons = mat.lessons.filter(l => 
+            l.name.toLowerCase().includes(search) || mat.title.toLowerCase().includes(search)
+          );
+
+          if (search && !filteredLessons.length) return;
+          moduleHasMatches = true;
+
+          let lessonsList = search ? filteredLessons : mat.lessons;
+          let lessonsCardsHtml = lessonsList.map(s => {
+            let p = prog[s.id] || 0, avail = Boolean(s.playlist);
+            return `
+              <div class="subject-card">
+                <div class="subject-top">
+                  <span class="subject-title" onclick="openSubject('${s.id}')">${s.name}</span>
+                  <div>
+                    ${isAdmin ? `<button class="edit-btn" onclick="showLinkModal('${s.id}')">⚙️ Link</button>` : ''}
+                    <button class="action-btn ${avail ? 'available' : ''}" onclick="openSubject('${s.id}')">
+                      ${avail ? '▶ Assistir' : 'Indisponível'}
+                    </button>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted);">
+                  <span>Progresso</span><span>${p}%</span>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          materiasHtml += `
+            <div class="materia-block">
+              <div class="materia-header">📖 ${mat.title}</div>
+              <div class="subjects-grid">${lessonsCardsHtml}</div>
+            </div>
+          `;
+        });
+
+        if (search && !moduleHasMatches) return;
+
+        html += `
+          <div class="module ${search ? 'open' : ''}" id="mod-${m.id}">
+            <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
+              <span>📌 ${m.name}</span><span>▼</span>
+            </button>
+            <div class="module-content">${materiasHtml}</div>
+          </div>
+        `;
+      });
+      $("modulesContainer").innerHTML = html;
+    };
+
+    let ytPlayer = null;
+    let progressInterval = null;
+    let pendingSubjectId = null;
+
     if (!window.YT) {
       let tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
@@ -361,100 +681,106 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
 
-    window.closePlayer = () => {
-      if (progressInterval) clearInterval(progressInterval);
-      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-        ytPlayer.destroy();
-        ytPlayer = null;
+    window.onYouTubeIframeAPIReady = () => {
+      if (pendingSubjectId) {
+        window.openSubject(pendingSubjectId);
+        pendingSubjectId = null;
       }
-      if ($("playerArea")) $("playerArea").classList.remove("active");
-      if ($("player")) $("player").innerHTML = "";
-      activeSubjectId = null;
-      maxWatchedTime = 0;
     };
 
     window.openSubject = (subId) => {
-      let sub = window.getAllLessons().find(s => s.id === subId);
-      if (!sub || !sub.playlist) return;
+      let sub = getAllLessons().find(s => s.id === subId);
+      if (!sub || !sub.playlist) return alert("Conteúdo indisponível.");
 
-      window.closePlayer();
+      if (typeof YT === "undefined" || !YT.Player) {
+        pendingSubjectId = subId;
+        return;
+      }
+
       activeSubjectId = subId;
-      if ($("playerArea")) $("playerArea").classList.add("active");
-      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle || ''} - ${sub.name || ''}`;
+      let parsed = parseYouTubeUrl(sub.playlist);
 
-      const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
-      const currentSavedPercent = userProgressCache[subId] || 0;
+      $("playerTitle").textContent = `${sub.materiaTitle}: ${sub.name}`;
+      $("playerArea").classList.add("active");
+      $("playerArea").scrollIntoView({ behavior: "smooth" });
 
-      let playerVars = { autoplay: 1, rel: 0, modestbranding: 1 };
-      if (playlistId) {
-        playerVars.listType = 'playlist';
-        playerVars.list = playlistId;
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+      }
+
+      let playerVarsConfig = { autoplay: 1, rel: 0 };
+      if (parsed.playlistId) {
+        playerVarsConfig.listType = 'playlist';
+        playerVarsConfig.list = parsed.playlistId;
       }
 
       ytPlayer = new YT.Player('player', {
-        videoId: videoId || undefined,
-        playerVars: playerVars,
-        events: {
-          'onReady': () => {
-            const duration = ytPlayer.getDuration();
-            if (duration > 0 && currentSavedPercent > 0) {
-              maxWatchedTime = (currentSavedPercent / 100) * duration;
-              ytPlayer.seekTo(maxWatchedTime, true);
-            } else {
-              maxWatchedTime = 0;
-            }
-            startProgressTracker(subId);
-          },
-          'onStateChange': (event) => {
-            if (event.data === YT.PlayerState.PLAYING) {
-              startProgressTracker(subId);
-            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-              if (progressInterval) clearInterval(progressInterval);
-              if (event.data === YT.PlayerState.ENDED) {
-                if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
-                window.setProgress(subId, 100);
-              }
-            }
-          }
-        }
+        height: '100%',
+        width: '100%',
+        videoId: parsed.videoId || undefined,
+        playerVars: playerVarsConfig,
+        events: { 'onStateChange': onPlayerStateChange }
       });
 
-      if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
+      let p = getProgress()[subId] || 0;
+      $("simSlider").value = p;
+      $("simPercentText").textContent = p + "% assistido";
     };
 
-    function startProgressTracker(subId) {
-      if (progressInterval) clearInterval(progressInterval);
-
-      progressInterval = setInterval(() => {
-        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-
-        const currentTime = ytPlayer.getCurrentTime();
-        const duration = ytPlayer.getDuration();
-
-        if (!duration || duration === 0) return;
-
-        // Impede de avançar além do que já assistiu
-        if (currentTime > maxWatchedTime + 1.5) {
-          ytPlayer.seekTo(maxWatchedTime, true);
-          return;
-        }
-
-        if (currentTime > maxWatchedTime) {
-          maxWatchedTime = currentTime;
-        }
-
-        const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
-        if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
-
-        const currentProg = userProgressCache[subId] || 0;
-        if (percent >= currentProg + 2 || percent === 100) {
-          window.setProgress(subId, percent);
-        }
-      }, 500);
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        startProgressTracker();
+      } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+        stopProgressTracker();
+        calculateAndUpdateProgress();
+      }
     }
 
-    // Renderiza ao iniciar
-    window.renderModules();
+    function startProgressTracker() {
+      stopProgressTracker();
+      progressInterval = setInterval(() => {
+        calculateAndUpdateProgress();
+      }, 1000);
+    }
+
+    function stopProgressTracker() {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+    }
+
+    function calculateAndUpdateProgress() {
+      if (!ytPlayer || !ytPlayer.getDuration || !activeSubjectId) return;
+      let duration = ytPlayer.getDuration();
+      let currentTime = ytPlayer.getCurrentTime();
+
+      if (duration > 0) {
+        let percent = Math.min(100, Math.round((currentTime / duration) * 100));
+        $("simSlider").value = percent;
+        $("simPercentText").textContent = percent + "% assistido";
+        
+        let currentSavedVal = getProgress()[activeSubjectId] || 0;
+        if (percent > currentSavedVal) {
+          setProgress(activeSubjectId, percent);
+        }
+      }
+    }
+
+    window.closePlayer = () => {
+      stopProgressTracker();
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+      }
+      $("playerArea").classList.remove("active");
+      activeSubjectId = null;
+    };
+
+    window.toggleTheme = () => {
+      let current = document.documentElement.getAttribute("data-theme");
+      let t = current === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    };
   </script>
 </body>
 </html>
