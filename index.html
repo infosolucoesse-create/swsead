@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seminário William Seymour - EAD</title>
+  <title>Seminário William Seymour - EAD</title>
   <style>
     :root {
       --bg-color: #17110e;
@@ -123,7 +123,7 @@
   <div class="container" id="mainContainer">
     <header>
       <div class="brand-section">
-       <img src="imagens/logo.png" class="brand-logo" alt="Logo Seminário William Seymour">
+        <img src="logo.jpg" alt="Logo Seminário William Seymour" class="brand-logo">
         <div>
           <h1 class="brand-title">Seminário William Seymour</h1>
           <div class="brand-subtitle">Convenção Unida Internacional</div>
@@ -177,27 +177,21 @@
   </div>
 
   <script type="module">
-    /* ===== MODO PRÉVIA: sem Firebase. Qualquer senha entra. Usuário "anderson" = administrador ===== */
-    const initializeApp = () => ({});
-    const getFirestore = () => ({});
-    const doc = (db, col, id) => ({ col, id });
-    const demoProgress = { m1_teo_intro: 100, m1_teo_cap1: 60, m4_1: 35, m4_2: 10 };
-    const getDoc = async (ref) => ref.col === "progresso"
-      ? { exists: () => true, data: () => ({ aulas: demoProgress }) }
-      : { exists: () => false, data: () => ({}) };
-    const setDoc = async () => {};
-    const __auth = { currentUser: null };
-    let __cb = null;
-    const getAuth = () => __auth;
-    const onAuthStateChanged = (a, cb) => { __cb = cb; setTimeout(() => cb(null), 0); };
-    const signInWithEmailAndPassword = async (a, email) => { __auth.currentUser = { uid: "demo", email }; __cb(__auth.currentUser); };
-    const createUserWithEmailAndPassword = async () => {};
-    const sendPasswordResetEmail = async () => {};
-    const signOut = async () => { __auth.currentUser = null; };
-
-    
-    
-    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {  
+      getAuth,   
+      signInWithEmailAndPassword,   
+      createUserWithEmailAndPassword,   
+      sendPasswordResetEmail,
+      onAuthStateChanged,   
+      signOut   
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import {  
+      getFirestore,   
+      doc,   
+      getDoc,   
+      setDoc   
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
@@ -436,32 +430,27 @@
       html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
     };
 
-window.showLoginModal = () => {
-  openModal(`
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-      <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
-      <div>
-        <h2>Seminário William Seymour</h2>
-        <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
-      </div>
-    </div>
-
-    <form id="formLogin">
-
-
+    window.showLoginModal = () => {
+      openModal(`
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div>
+            <h2>Seminário William Seymour</h2>
+            <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
+          </div>
+        </div>
+        <form id="formLogin">
           <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
-              <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
+          <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
           <div style="text-align:center;">
             <button type="button" class="link-btn" onclick="showResetModal()">Esqueceu a senha?</button>
           </div>
           <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
         </form>
       `, "login");
-
       $("formLogin").addEventListener("submit", handleLogin);
     };
-
 
     window.showResetModal = () => {
       openModal(`
@@ -492,7 +481,7 @@ window.showLoginModal = () => {
     window.showRegisterModal = () => {
       openModal(`
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <h2>Seminário William Seymour</h2>
+          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
           <div>
             <h2>Cadastrar Aluno</h2>
             <p class="modal-subtitle" style="margin: 0;">Adicione um novo usuário.</p>
@@ -911,6 +900,5 @@ window.showLoginModal = () => {
       }, 500);
     }
   </script>
-<button onclick="toggleTheme()" style="position:fixed;right:12px;bottom:12px;z-index:2000;padding:8px 12px;border-radius:8px;border:1px solid #888;background:#fff;color:#222;font:600 12px system-ui;cursor:pointer;opacity:.9">🌓 Alternar tema (só na prévia)</button>
 </body>
 </html>
