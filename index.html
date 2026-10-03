@@ -114,7 +114,7 @@
 </head>
 <body>
 
-  <div class="container" id="mainContainer">
+  <div class="container active" id="mainContainer">
     <header>
       <div class="brand-section">
         <img src="logo.jpg" alt="Logo Seminário William Seymour" class="brand-logo">
@@ -125,8 +125,8 @@
       </div>
       <div class="header-actions">
         <div class="user-info">
-          <span id="currentUserName">Carregando...</span>
-          <span class="role-badge" id="userRoleTag">...</span>
+          <span id="currentUserName">Aluno</span>
+          <span class="role-badge" id="userRoleTag">EAD</span>
         </div>
         <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
         <button class="btn btn-secondary" id="btnAdmin" style="display:none;" onclick="showRegisterModal()">+ Aluno</button>
@@ -137,10 +137,10 @@
     <div class="overall-progress">
       <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
         <span>Progresso Geral do Curso</span>
-        <span id="overallPercent">0%</span>
+        <span id="overallPercentText">0%</span>
       </div>
       <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="overallBar"></div>
+        <div class="progress-bar-fill" id="overallProgressBar"></div>
       </div>
     </div>
 
@@ -160,7 +160,7 @@
     </div>
 
     <div class="controls">
-      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar matéria ou capítulo..." oninput="renderModules()">
+      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar matéria ou capítulo..." oninput="window.renderModules()">
     </div>
 
     <div id="modulesContainer"></div>
@@ -170,259 +170,328 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
- <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // Inicialização das instâncias do Firebase
-  const auth = getAuth();
-  const db = getFirestore();
-
-  // Variáveis de controle do Player e Progresso
-  let ytPlayer = null;
-  let progressInterval = null;
-  let pendingSubjectId = null;
-  let maxWatchedTime = 0;
-  let currentVideoLoadedId = null;
-  let activeSubjectId = null;
-  let userProgressCache = {}; // Cache local do progresso do usuário logado
-
-  const $ = (id) => document.getElementById(id);
-
-  // -----------------------------------------------------------------
-  // 1. HELPER: PARSER DE URL DO YOUTUBE
-  // -----------------------------------------------------------------
-  function parseYouTubeUrl(url) {
-    if (!url) return { videoId: null, playlistId: null };
-    
-    let videoId = null;
-    let playlistId = null;
-
-    const playlistMatch = url.match(/[?&]list=([^#&?]+)/);
-    if (playlistMatch) playlistId = playlistMatch[1];
-
-    const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-    if (videoMatch) videoId = videoMatch[1];
-
-    return { videoId, playlistId };
-  }
-
-  // -----------------------------------------------------------------
-  // 2. SINCRONIZAÇÃO DE PROGRESSO (FIREBASE FIRESTORE)
-  // -----------------------------------------------------------------
-
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      await loadUserProgressFromCloud(user.uid);
-    } else {
-      userProgressCache = {};
-      updateOverallProgressUI();
-    }
-  });
-
-  async function loadUserProgressFromCloud(uid) {
-    try {
-      const docRef = doc(db, "usersProgress", uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        userProgressCache = docSnap.data().lessons || {};
-      } else {
-        userProgressCache = {};
+    // -----------------------------------------------------------------
+    // ESTRUTURA DE MÓDULOS E AULAS (EXEMPLO/MODELO RESTAURADO)
+    // -----------------------------------------------------------------
+    const modulesData = [
+      {
+        id: "m1",
+        title: "Módulo I - Introdução Teológica",
+        materias: [
+          {
+            title: "Bibliologia",
+            lessons: [
+              { id: "b1", name: "Aula 1 - Origem e Estrutura da Bíblia", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+              { id: "b2", name: "Aula 2 - Canonização e Inerrância", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+            ]
+          }
+        ]
       }
-      updateOverallProgressUI();
-    } catch (error) {
-      console.error("Erro ao carregar progresso da nuvem:", error);
-      updateOverallProgressUI();
-    }
-  }
+    ];
 
-  window.getProgress = () => userProgressCache;
-
-  window.setProgress = async (subId, percent) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    userProgressCache[subId] = percent;
-    updateOverallProgressUI();
-
-    try {
-      const docRef = doc(db, "usersProgress", user.uid);
-      await setDoc(docRef, {
-        lessons: userProgressCache,
-        lastUpdated: new Date()
-      }, { merge: true });
-    } catch (error) {
-      console.error("Erro ao salvar progresso na nuvem:", error);
-    }
-  };
-
-  function updateOverallProgressUI() {
-    // Tenta atualizar a lista/links de aulas na interface caso exista a função de renderização
-    if (typeof window.renderLessonsList === 'function') {
-      window.renderLessonsList();
-    } else if (typeof window.renderUI === 'function') {
-      window.renderUI();
-    }
-
-    if (typeof window.getAllLessons !== 'function') return;
-    
-    const allLessons = window.getAllLessons();
-    if (!allLessons || allLessons.length === 0) return;
-
-    let totalPercent = 0;
-    allLessons.forEach(lesson => {
-      totalPercent += (userProgressCache[lesson.id] || 0);
-    });
-
-    const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
-
-    if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
-    if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
-  }
-
-  // -----------------------------------------------------------------
-  // 3. YOUTUBE IFRAME API & CONTROLE DO PLAYER
-  // -----------------------------------------------------------------
-
-  if (!window.YT) {
-    let tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    let firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-  }
-
-  window.onYouTubeIframeAPIReady = () => {
-    if (pendingSubjectId) {
-      window.openSubject(pendingSubjectId);
-      pendingSubjectId = null;
-    }
-  };
-
-  window.closePlayer = () => {
-    if (progressInterval) clearInterval(progressInterval);
-    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-      ytPlayer.destroy();
-      ytPlayer = null;
-    }
-    if ($("playerArea")) $("playerArea").classList.remove("active");
-    if ($("player")) $("player").innerHTML = "";
-    activeSubjectId = null;
-    maxWatchedTime = 0;
-    currentVideoLoadedId = null;
-  };
-
-  window.openSubject = (subId) => {
-    if (typeof window.getAllLessons !== 'function') return;
-
-    let sub = window.getAllLessons().find(s => s.id === subId);
-    if (!sub) return;
-
-    if (!sub.playlist) {
-      alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
-      return;
-    }
-
-    if (!window.YT || !window.YT.Player) {
-      pendingSubjectId = subId;
-      return;
-    }
-
-    window.closePlayer();
-    activeSubjectId = subId;
-    if ($("playerArea")) $("playerArea").classList.add("active");
-    if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle || ''} - ${sub.name || ''}`;
-
-    const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
-    const currentSavedPercent = window.getProgress()[subId] || 0;
-
-    let playerVars = {
-      autoplay: 1,
-      rel: 0,
-      modestbranding: 1
+    window.getAllLessons = () => {
+      let lessons = [];
+      modulesData.forEach(m => {
+        m.materias.forEach(mat => {
+          mat.lessons.forEach(l => {
+            lessons.push({ ...l, materiaTitle: mat.title });
+          });
+        });
+      });
+      return lessons;
     };
 
-    if (playlistId) {
-      playerVars.listType = 'playlist';
-      playerVars.list = playlistId;
+    // Inicialização do Firebase
+    const auth = getAuth();
+    const db = getFirestore();
+
+    // Variáveis Globais
+    let ytPlayer = null;
+    let progressInterval = null;
+    let pendingSubjectId = null;
+    let maxWatchedTime = 0;
+    let currentVideoLoadedId = null;
+    let activeSubjectId = null;
+    let userProgressCache = {};
+
+    const $ = (id) => document.getElementById(id);
+
+    window.toggleTheme = () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      document.documentElement.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+    };
+
+    window.handleLogout = () => {
+      signOut(auth).then(() => {
+        location.reload();
+      });
+    };
+
+    function parseYouTubeUrl(url) {
+      if (!url) return { videoId: null, playlistId: null };
+      let videoId = null;
+      let playlistId = null;
+
+      const playlistMatch = url.match(/[?&]list=([^#&?]+)/);
+      if (playlistMatch) playlistId = playlistMatch[1];
+
+      const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      if (videoMatch) videoId = videoMatch[1];
+
+      return { videoId, playlistId };
     }
 
-    ytPlayer = new YT.Player('player', {
-      videoId: videoId || undefined,
-      playerVars: playerVars,
-      events: {
-        'onReady': (event) => {
-          const duration = ytPlayer.getDuration();
-          if (duration > 0 && currentSavedPercent > 0) {
-            maxWatchedTime = (currentSavedPercent / 100) * duration;
-            ytPlayer.seekTo(maxWatchedTime, true);
-          } else {
-            maxWatchedTime = 0;
-          }
-          startProgressTracker(subId);
-        },
-        'onStateChange': (event) => {
-          if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
-            const videoData = ytPlayer.getVideoData();
-            if (videoData && videoData.video_id !== currentVideoLoadedId) {
-              currentVideoLoadedId = videoData.video_id;
-              if (maxWatchedTime > ytPlayer.getDuration()) {
-                maxWatchedTime = 0;
-              }
-            }
-          }
-
-          if (event.data === YT.PlayerState.PLAYING) {
-            startProgressTracker(subId);
-          } else if (event.data === YT.PlayerState.PAUSED) {
-            if (progressInterval) clearInterval(progressInterval);
-          } else if (event.data === YT.PlayerState.ENDED) {
-            if (progressInterval) clearInterval(progressInterval);
-            if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
-            if ($("simSlider")) $("simSlider").value = 100;
-            window.setProgress(subId, 100);
-          }
-        }
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if ($("currentUserName")) $("currentUserName").textContent = user.displayName || user.email;
+        await loadUserProgressFromCloud(user.uid);
+      } else {
+        userProgressCache = {};
+        window.renderModules();
+        updateOverallProgressUI();
       }
     });
 
-    if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
-  };
+    async function loadUserProgressFromCloud(uid) {
+      try {
+        const docRef = doc(db, "usersProgress", uid);
+        const docSnap = await getDoc(docRef);
 
-  function startProgressTracker(subId) {
-    if (progressInterval) clearInterval(progressInterval);
+        if (docSnap.exists()) {
+          userProgressCache = docSnap.data().lessons || {};
+        } else {
+          userProgressCache = {};
+        }
+        window.renderModules();
+        updateOverallProgressUI();
+      } catch (error) {
+        console.error("Erro ao carregar progresso:", error);
+        window.renderModules();
+        updateOverallProgressUI();
+      }
+    }
 
-    progressInterval = setInterval(() => {
-      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+    window.getProgress = () => userProgressCache;
 
-      const currentTime = ytPlayer.getCurrentTime();
-      const duration = ytPlayer.getDuration();
+    window.setProgress = async (subId, percent) => {
+      const user = auth.currentUser;
+      userProgressCache[subId] = percent;
+      updateOverallProgressUI();
 
-      if (!duration || duration === 0) return;
+      if (user) {
+        try {
+          const docRef = doc(db, "usersProgress", user.uid);
+          await setDoc(docRef, {
+            lessons: userProgressCache,
+            lastUpdated: new Date()
+          }, { merge: true });
+        } catch (error) {
+          console.error("Erro ao salvar progresso:", error);
+        }
+      }
+    };
 
-      // TRAVA DE AVANÇO: Impede saltar para a frente além do tempo já assistido
-      if (currentTime > maxWatchedTime + 1.5) {
-        ytPlayer.seekTo(maxWatchedTime, true);
+    function updateOverallProgressUI() {
+      const allLessons = window.getAllLessons();
+      if (!allLessons || allLessons.length === 0) return;
+
+      let totalPercent = 0;
+      allLessons.forEach(lesson => {
+        totalPercent += (userProgressCache[lesson.id] || 0);
+      });
+
+      const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
+
+      if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
+      if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
+    }
+
+    window.renderModules = () => {
+      const container = $("modulesContainer");
+      if (!container) return;
+      
+      const filter = ($("searchInput") ? $("searchInput").value : "").toLowerCase();
+      container.innerHTML = "";
+
+      modulesData.forEach(mod => {
+        let hasMatches = false;
+        let moduleHtml = `<div class="module open">
+          <button class="module-toggle" onclick="this.parentElement.classList.toggle('open')">
+            <span>${mod.title}</span>
+            <span>▾</span>
+          </button>
+          <div class="module-content">`;
+
+        mod.materias.forEach(mat => {
+          const filteredLessons = mat.lessons.filter(l => 
+            l.name.toLowerCase().includes(filter) || mat.title.toLowerCase().includes(filter)
+          );
+
+          if (filteredLessons.length > 0) {
+            hasMatches = true;
+            moduleHtml += `<div class="materia-block">
+              <div class="materia-header">📘 ${mat.title}</div>
+              <div class="subjects-grid">`;
+
+            filteredLessons.forEach(l => {
+              const prog = userProgressCache[l.id] || 0;
+              moduleHtml += `
+                <div class="subject-card">
+                  <div class="subject-top">
+                    <span class="subject-title" onclick="window.openSubject('${l.id}')">${l.name}</span>
+                    <button class="action-btn available" onclick="window.openSubject('${l.id}')">
+                      ${prog === 100 ? 'Concluído' : prog > 0 ? prog + '%' : 'Assistir'}
+                    </button>
+                  </div>
+                </div>`;
+            });
+
+            moduleHtml += `</div></div>`;
+          }
+        });
+
+        moduleHtml += `</div></div>`;
+        if (hasMatches || !filter) {
+          container.innerHTML += moduleHtml;
+        }
+      });
+    };
+
+    // YouTube API Integration
+    if (!window.YT) {
+      let tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      let firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      if (pendingSubjectId) {
+        window.openSubject(pendingSubjectId);
+        pendingSubjectId = null;
+      }
+    };
+
+    window.closePlayer = () => {
+      if (progressInterval) clearInterval(progressInterval);
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+        ytPlayer = null;
+      }
+      if ($("playerArea")) $("playerArea").classList.remove("active");
+      if ($("player")) $("player").innerHTML = "";
+      activeSubjectId = null;
+      maxWatchedTime = 0;
+      currentVideoLoadedId = null;
+    };
+
+    window.openSubject = (subId) => {
+      let sub = window.getAllLessons().find(s => s.id === subId);
+      if (!sub) return;
+
+      if (!sub.playlist) {
+        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
         return;
       }
 
-      if (currentTime > maxWatchedTime) {
-        maxWatchedTime = currentTime;
+      if (!window.YT || !window.YT.Player) {
+        pendingSubjectId = subId;
+        return;
       }
 
-      const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
-      
-      if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
-      if ($("simSlider")) $("simSlider").value = percent;
+      window.closePlayer();
+      activeSubjectId = subId;
+      if ($("playerArea")) $("playerArea").classList.add("active");
+      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle || ''} - ${sub.name || ''}`;
 
-      const currentProg = window.getProgress()[subId] || 0;
-      // Salva no Firestore a cada 2% de avanço acumulado ou ao concluir 100%
-      if (percent >= currentProg + 2 || percent === 100) {
-        window.setProgress(subId, percent);
+      const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
+      const currentSavedPercent = window.getProgress()[subId] || 0;
+
+      let playerVars = { autoplay: 1, rel: 0, modestbranding: 1 };
+      if (playlistId) {
+        playerVars.listType = 'playlist';
+        playerVars.list = playlistId;
       }
-    }, 500);
-  }
-</script>
+
+      ytPlayer = new YT.Player('player', {
+        videoId: videoId || undefined,
+        playerVars: playerVars,
+        events: {
+          'onReady': () => {
+            const duration = ytPlayer.getDuration();
+            if (duration > 0 && currentSavedPercent > 0) {
+              maxWatchedTime = (currentSavedPercent / 100) * duration;
+              ytPlayer.seekTo(maxWatchedTime, true);
+            } else {
+              maxWatchedTime = 0;
+            }
+            startProgressTracker(subId);
+          },
+          'onStateChange': (event) => {
+            if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
+              const videoData = ytPlayer.getVideoData();
+              if (videoData && videoData.video_id !== currentVideoLoadedId) {
+                currentVideoLoadedId = videoData.video_id;
+                if (maxWatchedTime > ytPlayer.getDuration()) {
+                  maxWatchedTime = 0;
+                }
+              }
+            }
+
+            if (event.data === YT.PlayerState.PLAYING) {
+              startProgressTracker(subId);
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+              if (progressInterval) clearInterval(progressInterval);
+              if (event.data === YT.PlayerState.ENDED) {
+                if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
+                window.setProgress(subId, 100);
+              }
+            }
+          }
+        }
+      });
+
+      if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
+    };
+
+    function startProgressTracker(subId) {
+      if (progressInterval) clearInterval(progressInterval);
+
+      progressInterval = setInterval(() => {
+        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+
+        const currentTime = ytPlayer.getCurrentTime();
+        const duration = ytPlayer.getDuration();
+
+        if (!duration || duration === 0) return;
+
+        if (currentTime > maxWatchedTime + 1.5) {
+          ytPlayer.seekTo(maxWatchedTime, true);
+          return;
+        }
+
+        if (currentTime > maxWatchedTime) {
+          maxWatchedTime = currentTime;
+        }
+
+        const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
+        
+        if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
+
+        const currentProg = window.getProgress()[subId] || 0;
+        if (percent >= currentProg + 2 || percent === 100) {
+          window.setProgress(subId, percent);
+        }
+      }, 500);
+    }
+
+    // Renderização inicial
+    window.renderModules();
+  </script>
 </body>
 </html>
