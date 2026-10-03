@@ -1,156 +1,365 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plataforma de Aulas</title>
+  <title>Seminário William Seymour - EAD</title>
   <style>
     :root {
-      --primary-color: #2563eb;
-      --bg-color: #f8fafc;
+      --bg-color: #090d16;
+      --card-bg: #131b2e;
+      --card-hover: #19233c;
+      --text-main: #f1f5f9;
+      --text-muted: #8b9bb4;
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --accent: #3b82f6;
+      --danger: #ef4444;
+      --border-color: #1e293b;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f1f5f9;
       --card-bg: #ffffff;
-      --text-color: #1e293b;
+      --card-hover: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     }
 
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      margin: 0;
-      padding: 20px;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 30px 20px; transition: background-color 0.3s, color 0.3s; min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; }
+    .container { width: 100%; max-width: 960px; margin: 0 auto; display: none; }
+    .container.active { display: block; }
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+    .brand-section { display: flex; align-items: center; gap: 14px; }
+    .brand-logo { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .brand-title { font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -0.2px; }
+    .brand-subtitle { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
-    .player-area {
-      display: none;
-      margin-top: 20px;
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
+    .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; }
+    .role-badge { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: white; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
 
-    .player-area.active {
-      display: block;
-    }
+    .overall-progress { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: var(--shadow); }
+    .progress-bar-bg { background-color: var(--border-color); height: 10px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+    .progress-bar-fill { background: linear-gradient(90deg, #10b981, #3b82f6); height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    .video-wrapper {
-      position: relative;
-      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-      height: 0;
-      overflow: hidden;
-      border-radius: 6px;
-      background: #000;
-    }
+    .controls { display: flex; gap: 12px; margin-bottom: 25px; }
+    .search-bar { flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-bar:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
 
-    .video-wrapper iframe, .video-wrapper #player {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
+    .btn { padding: 9px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); }
+    .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary { background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { background-color: var(--card-hover); border-color: var(--text-muted); }
+    .btn-danger { background-color: var(--danger); color: white; }
 
-    .player-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-    }
+    /* Módulo e Matérias */
+    .module { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); transition: border-color 0.2s; }
+    .module-toggle { width: 100%; text-align: left; padding: 18px 20px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .module-toggle:hover { background-color: var(--card-hover); }
 
-    button.btn-close {
-      background-color: #ef4444;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+    .module-content { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border-color); }
+    .module.open .module-content { display: block; }
 
-    button.btn-close:hover {
-      background-color: #dc2626;
+    .materia-block { margin-top: 20px; }
+    .materia-header { font-size: 15px; font-weight: 700; color: var(--accent); padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+    .subjects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+
+    .subject-card { background-color: var(--bg-color); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s, border-color 0.2s; }
+    .subject-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .subject-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .subject-title { font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1.3; }
+    .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
+    .action-btn.available { background-color: var(--accent); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
+    .action-btn.available:hover { filter: brightness(1.1); }
+
+    .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+    .player-section.active { display: block; animation: fadeIn 0.3s ease; }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background-color: #000; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .video-container iframe, .video-container #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="container active" id="mainContainer">
     <header>
-      <h1>Aulas & Videoaulas</h1>
+      <div class="brand-section">
+        <img src="logo.jpg" alt="Logo Seminário William Seymour" class="brand-logo">
+        <div>
+          <h1 class="brand-title">Seminário William Seymour</h1>
+          <div class="brand-subtitle">Convenção Unida Internacional</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="user-info">
+          <span id="currentUserName">Aluno</span>
+          <span class="role-badge" id="userRoleTag">EAD</span>
+        </div>
+        <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
+        <button class="btn btn-danger" onclick="handleLogout()">Sair</button>
+      </div>
     </header>
 
-    <!-- Área do Player de Vídeo -->
-    <div id="playerArea" class="player-area">
-      <h2 id="playerTitle">Título da Aula</h2>
-      <div class="video-wrapper">
-        <div id="player"></div>
+    <div class="overall-progress">
+      <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
+        <span>Progresso Geral do Curso</span>
+        <span id="overallPercentText">0%</span>
       </div>
-      <div class="player-controls">
-        <span id="simPercentText">0% assistido</span>
-        <button class="btn-close" onclick="window.closePlayer()">Fechar Player</button>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="overallProgressBar"></div>
       </div>
     </div>
+
+    <div class="player-section" id="playerArea">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="playerTitle" style="font-size: 16px;">Assistindo Aula</h3>
+        <button class="btn btn-secondary" onclick="closePlayer()">✕ Fechar</button>
+      </div>
+      <div class="video-container">
+        <div id="player"></div>
+      </div>
+      <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+        <span>Progresso do Vídeo:</span>
+        <span id="simPercentText">0% assistido</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input type="text" class="search-bar" id="searchInput" placeholder="Pesquisar matéria ou capítulo..." oninput="window.renderModules()">
+    </div>
+
+    <div id="modulesContainer"></div>
   </div>
 
   <script type="module">
-    // Função auxiliar seletora DOM
-    const $ = (id) => document.getElementById(id);
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Estado global da aplicação
+    // 1. CONFIGURAÇÃO DO FIREBASE (substitua com suas chaves se necessário)
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJETO",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // 2. CONTEÚDO DOS MÓDULOS E MATÉRIAS
+    const modulesData = [
+      {
+        id: "m1",
+        title: "Módulo I - Teologia Básica",
+        materias: [
+          {
+            title: "Bibliologia",
+            lessons: [
+              { id: "b1", name: "Aula 1 - Introdução à Bíblia", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+              { id: "b2", name: "Aula 2 - Estrutura e Divisão", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+            ]
+          }
+        ]
+      }
+    ];
+
+    // ESTADO LOCAL DO PROGRESSO
+    let userProgressCache = {};
+    let ytPlayer = null;
+    let progressInterval = null;
+    let maxWatchedTime = 0;
     let activeSubjectId = null;
 
-    // Funções auxiliares (Exemplo / Substitua pelas suas regras de banco de dados se houver)
-    function getAllLessons() {
-      return [
-        { id: '1', materiaTitle: 'Matemática', name: 'Álgebra Básica', playlist: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }
-      ];
+    const $ = (id) => document.getElementById(id);
+
+    // -----------------------------------------------------------------
+    // FUNÇÕES DO FIREBASE (Leitura e Escrita na Nuvem)
+    // -----------------------------------------------------------------
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if ($("currentUserName")) $("currentUserName").textContent = user.displayName || user.email;
+        await loadProgressFromCloud(user.uid);
+      } else {
+        userProgressCache = {};
+        window.renderModules();
+        updateOverallProgressUI();
+      }
+    });
+
+    // Carrega o progresso salvo na nuvem
+    async function loadProgressFromCloud(uid) {
+      try {
+        const docRef = doc(db, "usersProgress", uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          userProgressCache = docSnap.data().lessons || {};
+        }
+      } catch (err) {
+        console.error("Erro ao carregar do Firestore:", err);
+      } finally {
+        window.renderModules();
+        updateOverallProgressUI();
+      }
     }
 
-    function parseYouTubeUrl(url) {
-      let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      let match = url.match(regExp);
-      let videoId = (match && match[2].length === 11) ? match[2] : null;
+    // Salva a porcentagem atual na nuvem
+    async function saveProgressToCloud(subId, percent) {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const docRef = doc(db, "usersProgress", user.uid);
+        await setDoc(docRef, {
+          lessons: { [subId]: percent },
+          lastUpdated: new Date()
+        }, { merge: true });
+      } catch (err) {
+        console.error("Erro ao salvar no Firestore:", err);
+      }
+    }
 
-      let playlistMatch = url.match(/[?&]list=([^#\&\?]+)/);
-      let playlistId = playlistMatch ? playlistMatch[1] : null;
+    // Atualiza estado local e chama o salvamento na nuvem
+    window.setProgress = (subId, percent) => {
+      userProgressCache[subId] = percent;
+      updateOverallProgressUI();
+      window.renderModules();
+      saveProgressToCloud(subId, percent);
+    };
+
+    window.getProgress = () => userProgressCache;
+
+    // -----------------------------------------------------------------
+    // INTERFACE E RENDERIZAÇÃO
+    // -----------------------------------------------------------------
+    window.getAllLessons = () => {
+      let lessons = [];
+      modulesData.forEach(m => {
+        m.materias.forEach(mat => {
+          mat.lessons.forEach(l => {
+            lessons.push({ ...l, materiaTitle: mat.title });
+          });
+        });
+      });
+      return lessons;
+    };
+
+    window.toggleTheme = () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      document.documentElement.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+    };
+
+    window.handleLogout = () => {
+      signOut(auth).then(() => location.reload());
+    };
+
+    function updateOverallProgressUI() {
+      const allLessons = window.getAllLessons();
+      if (!allLessons || allLessons.length === 0) return;
+
+      let totalPercent = 0;
+      allLessons.forEach(lesson => {
+        totalPercent += (userProgressCache[lesson.id] || 0);
+      });
+
+      const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
+      if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
+      if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
+    }
+
+    window.renderModules = () => {
+      const container = $("modulesContainer");
+      if (!container) return;
+      
+      const filter = ($("searchInput") ? $("searchInput").value : "").toLowerCase();
+      container.innerHTML = "";
+
+      modulesData.forEach(mod => {
+        let hasMatches = false;
+        let moduleHtml = `<div class="module open">
+          <button class="module-toggle" onclick="this.parentElement.classList.toggle('open')">
+            <span>${mod.title}</span>
+            <span>▾</span>
+          </button>
+          <div class="module-content">`;
+
+        mod.materias.forEach(mat => {
+          const filteredLessons = mat.lessons.filter(l => 
+            l.name.toLowerCase().includes(filter) || mat.title.toLowerCase().includes(filter)
+          );
+
+          if (filteredLessons.length > 0) {
+            hasMatches = true;
+            moduleHtml += `<div class="materia-block">
+              <div class="materia-header">📘 ${mat.title}</div>
+              <div class="subjects-grid">`;
+
+            filteredLessons.forEach(l => {
+              const prog = userProgressCache[l.id] || 0;
+              moduleHtml += `
+                <div class="subject-card">
+                  <div class="subject-top">
+                    <span class="subject-title" onclick="window.openSubject('${l.id}')">${l.name}</span>
+                    <button class="action-btn available" onclick="window.openSubject('${l.id}')">
+                      ${prog === 100 ? 'Concluído' : prog > 0 ? prog + '%' : 'Assistir'}
+                    </button>
+                  </div>
+                </div>`;
+            });
+
+            moduleHtml += `</div></div>`;
+          }
+        });
+
+        moduleHtml += `</div></div>`;
+        if (hasMatches || !filter) {
+          container.innerHTML += moduleHtml;
+        }
+      });
+    };
+
+    // -----------------------------------------------------------------
+    // PLAYER DO YOUTUBE E MONITORAÇÃO DO VÍDEO
+    // -----------------------------------------------------------------
+    function parseYouTubeUrl(url) {
+      if (!url) return { videoId: null, playlistId: null };
+      let videoId = null;
+      let playlistId = null;
+
+      const playlistMatch = url.match(/[?&]list=([^#&?]+)/);
+      if (playlistMatch) playlistId = playlistMatch[1];
+
+      const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      if (videoMatch) videoId = videoMatch[1];
 
       return { videoId, playlistId };
     }
 
-    function getProgress() {
-      return JSON.parse(localStorage.getItem('userProgress') || '{}');
-    }
-
-    function setProgress(subjectId, percent) {
-      let prog = getProgress();
-      prog[subjectId] = percent;
-      localStorage.setItem('userProgress', JSON.stringify(prog));
-    }
-
-    // Gerenciamento do Player do YouTube
-   let ytPlayer = null;
-    let progressInterval = null;
-    let pendingSubjectId = null;
-    let maxWatchedTime = 0;
-    let currentVideoLoadedId = null;
-
+    // Carrega a API do YouTube
     if (!window.YT) {
       let tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
       let firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
-
-    window.onYouTubeIframeAPIReady = () => {
-      if (pendingSubjectId) {
-        window.openSubject(pendingSubjectId);
-        pendingSubjectId = null;
-      }
-    };
 
     window.closePlayer = () => {
       if (progressInterval) clearInterval(progressInterval);
@@ -162,39 +371,21 @@
       if ($("player")) $("player").innerHTML = "";
       activeSubjectId = null;
       maxWatchedTime = 0;
-      currentVideoLoadedId = null;
     };
 
     window.openSubject = (subId) => {
-      let sub = getAllLessons().find(s => s.id === subId);
-      if (!sub) return;
+      let sub = window.getAllLessons().find(s => s.id === subId);
+      if (!sub || !sub.playlist) return;
 
-      if (!sub.playlist) {
-        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
-        return;
-      }
-
-      if (!window.YT || !window.YT.Player) {
-        pendingSubjectId = subId;
-        return;
-      }
-
-      closePlayer();
+      window.closePlayer();
       activeSubjectId = subId;
       if ($("playerArea")) $("playerArea").classList.add("active");
-      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle} - ${sub.name}`;
+      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle || ''} - ${sub.name || ''}`;
 
       const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
-      
-      const prog = getProgress();
-      const currentSavedPercent = prog[subId] || 0;
+      const currentSavedPercent = userProgressCache[subId] || 0;
 
-      let playerVars = {
-        autoplay: 1,
-        rel: 0,
-        modestbranding: 1
-      };
-
+      let playerVars = { autoplay: 1, rel: 0, modestbranding: 1 };
       if (playlistId) {
         playerVars.listType = 'playlist';
         playerVars.list = playlistId;
@@ -204,7 +395,7 @@
         videoId: videoId || undefined,
         playerVars: playerVars,
         events: {
-          'onReady': (event) => {
+          'onReady': () => {
             const duration = ytPlayer.getDuration();
             if (duration > 0 && currentSavedPercent > 0) {
               maxWatchedTime = (currentSavedPercent / 100) * duration;
@@ -212,29 +403,17 @@
             } else {
               maxWatchedTime = 0;
             }
-            
             startProgressTracker(subId);
           },
           'onStateChange': (event) => {
-            if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
-              const videoData = ytPlayer.getVideoData();
-              if (videoData && videoData.video_id !== currentVideoLoadedId) {
-                currentVideoLoadedId = videoData.video_id;
-                if (maxWatchedTime > ytPlayer.getDuration()) {
-                  maxWatchedTime = 0;
-                }
-              }
-            }
-
             if (event.data === YT.PlayerState.PLAYING) {
               startProgressTracker(subId);
-            } else if (event.data === YT.PlayerState.PAUSED) {
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
               if (progressInterval) clearInterval(progressInterval);
-            } else if (event.data === YT.PlayerState.ENDED) {
-              if (progressInterval) clearInterval(progressInterval);
-              if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
-              if ($("simSlider")) $("simSlider").value = 100;
-              setProgress(subId, 100);
+              if (event.data === YT.PlayerState.ENDED) {
+                if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
+                window.setProgress(subId, 100);
+              }
             }
           }
         }
@@ -254,13 +433,7 @@
 
         if (!duration || duration === 0) return;
 
-        const currentSavedPercent = getProgress()[subId] || 0;
-        if (maxWatchedTime === 0 && currentSavedPercent > 0) {
-          maxWatchedTime = (currentSavedPercent / 100) * duration;
-          ytPlayer.seekTo(maxWatchedTime, true);
-        }
-
-        // TRAVA DE AVANÇO: Se avançar mais de 1.5s além do máximo assistido
+        // Impede de avançar além do que já assistiu
         if (currentTime > maxWatchedTime + 1.5) {
           ytPlayer.seekTo(maxWatchedTime, true);
           return;
@@ -271,16 +444,17 @@
         }
 
         const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
-        
         if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
-        if ($("simSlider")) $("simSlider").value = percent;
 
-        const currentProg = getProgress()[subId] || 0;
-        if (percent > currentProg) {
-          setProgress(subId, percent);
+        const currentProg = userProgressCache[subId] || 0;
+        if (percent >= currentProg + 2 || percent === 100) {
+          window.setProgress(subId, percent);
         }
       }, 500);
     }
+
+    // Renderiza ao iniciar
+    window.renderModules();
   </script>
 </body>
 </html>
