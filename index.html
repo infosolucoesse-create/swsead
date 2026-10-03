@@ -1,36 +1,40 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="dark">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seminário William Seymour - EAD</title>
+  <title>PRÉVIA - Seminário William Seymour - EAD</title>
   <style>
     :root {
-      --bg-color: #090d16;
-      --card-bg: #131b2e;
-      --card-hover: #19233c;
-      --text-main: #f1f5f9;
-      --text-muted: #8b9bb4;
-      --primary: #10b981;
-      --primary-hover: #059669;
-      --accent: #3b82f6;
+      --bg-color: #17110e;
+      --card-bg: #211a16;
+      --card-hover: #2b221d;
+      --text-main: #f1e9e1;
+      --text-muted: #a89b8f;
+      --primary: #2f6b7d;
+      --primary-hover: #3a7f94;
+      --accent: #c8a14a;
+      --on-accent: #1a120c;
+      --focus-ring: rgba(200, 161, 74, 0.22);
       --danger: #ef4444;
-      --border-color: #1e293b;
-      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+      --border-color: #3a2e27;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
     }
 
     [data-theme="light"] {
-      --bg-color: #f1f5f9;
-      --card-bg: #ffffff;
-      --card-hover: #f8fafc;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --primary: #10b981;
-      --primary-hover: #059669;
-      --accent: #2563eb;
-      --danger: #dc2626;
-      --border-color: #e2e8f0;
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --bg-color: #e7ded8;
+      --card-bg: #f4eee9;
+      --card-hover: #ece3dc;
+      --text-main: #3a1a0e;
+      --text-muted: #7d6a5f;
+      --primary: #1f4452;
+      --primary-hover: #163340;
+      --accent: #8a6a1f;
+      --on-accent: #ffffff;
+      --focus-ring: rgba(138, 106, 31, 0.25);
+      --danger: #b91c1c;
+      --border-color: #d4c7bd;
+      --shadow: 0 4px 6px -1px rgba(58, 26, 14, 0.08), 0 2px 4px -2px rgba(58, 26, 14, 0.06);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
@@ -46,18 +50,18 @@
 
     .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; }
-    .role-badge { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: white; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
+    .role-badge { background: var(--primary); color: #fff; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
 
     .overall-progress { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: var(--shadow); }
     .progress-bar-bg { background-color: var(--border-color); height: 10px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
-    .progress-bar-fill { background: linear-gradient(90deg, #10b981, #3b82f6); height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .progress-bar-fill { background: linear-gradient(90deg, var(--primary), var(--accent)); height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
     .controls { display: flex; gap: 12px; margin-bottom: 25px; }
     .search-bar { flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-    .search-bar:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    .search-bar:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 
     .btn { padding: 9px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); }
+    .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18); }
     .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
     .btn-secondary { background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); }
     .btn-secondary:hover { background-color: var(--card-hover); border-color: var(--text-muted); }
@@ -81,7 +85,7 @@
     .subject-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
     .subject-title { font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1.3; }
     .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
-    .action-btn.available { background-color: var(--accent); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
+    .action-btn.available { background-color: var(--accent); color: var(--on-accent); }
     .action-btn.available:hover { filter: brightness(1.1); }
     .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px; }
     .edit-btn:hover { color: var(--text-main); }
@@ -91,14 +95,16 @@
     .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background-color: #000; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .video-container iframe, .video-container #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(5, 8, 15, 0.85); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(23, 17, 14, 0.7); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
     .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
     .modal h2 { margin-bottom: 2px; font-size: 18px; font-weight: 700; }
     .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 500; }
     .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+    .modal-overlay.login { background: transparent; backdrop-filter: none; }
+    html.embedded.logged-out, html.embedded body.logged-out { background: transparent; }
     .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
     .link-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
 
@@ -117,7 +123,7 @@
   <div class="container" id="mainContainer">
     <header>
       <div class="brand-section">
-        <img src="logo.jpg" alt="Logo Seminário William Seymour" class="brand-logo">
+        <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%231f4452'/%3E%3Ccircle cx='24' cy='24' r='14' fill='%23c9a84c'/%3E%3C/svg%3E" alt="Logo Seminário William Seymour" class="brand-logo">
         <div>
           <h1 class="brand-title">Seminário William Seymour</h1>
           <div class="brand-subtitle">Convenção Unida Internacional</div>
@@ -171,21 +177,27 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import {  
-      getAuth,   
-      signInWithEmailAndPassword,   
-      createUserWithEmailAndPassword,   
-      sendPasswordResetEmail,
-      onAuthStateChanged,   
-      signOut   
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import {  
-      getFirestore,   
-      doc,   
-      getDoc,   
-      setDoc   
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    /* ===== MODO PRÉVIA: sem Firebase. Qualquer senha entra. Usuário "anderson" = administrador ===== */
+    const initializeApp = () => ({});
+    const getFirestore = () => ({});
+    const doc = (db, col, id) => ({ col, id });
+    const demoProgress = { m1_teo_intro: 100, m1_teo_cap1: 60, m4_1: 35, m4_2: 10 };
+    const getDoc = async (ref) => ref.col === "progresso"
+      ? { exists: () => true, data: () => ({ aulas: demoProgress }) }
+      : { exists: () => false, data: () => ({}) };
+    const setDoc = async () => {};
+    const __auth = { currentUser: null };
+    let __cb = null;
+    const getAuth = () => __auth;
+    const onAuthStateChanged = (a, cb) => { __cb = cb; setTimeout(() => cb(null), 0); };
+    const signInWithEmailAndPassword = async (a, email) => { __auth.currentUser = { uid: "demo", email }; __cb(__auth.currentUser); };
+    const createUserWithEmailAndPassword = async () => {};
+    const sendPasswordResetEmail = async () => {};
+    const signOut = async () => { __auth.currentUser = null; };
+
+    
+    
+    
 
     const firebaseConfig = {
       apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
@@ -397,7 +409,11 @@
       renderModules();
     }
 
+    if (window.self !== window.top) document.documentElement.classList.add("embedded");
+
     onAuthStateChanged(auth, (user) => {
+      document.documentElement.classList.toggle("logged-out", !user);
+      document.body.classList.toggle("logged-out", !user);
       if (user) {
         currentUser = user.email;
         closeModal();
@@ -413,7 +429,7 @@
     });
 
     window.closeModal = () => { $("modalOverlay").style.display = "none"; };
-    window.openModal = (html) => { $("modalContent").innerHTML = html; $("modalOverlay").style.display = "flex"; };
+    window.openModal = (html, cls = "") => { $("modalContent").innerHTML = html; $("modalOverlay").className = "modal-overlay " + cls; $("modalOverlay").style.display = "flex"; };
 
     window.toggleTheme = () => {
       const html = document.documentElement;
@@ -423,7 +439,7 @@
     window.showLoginModal = () => {
       openModal(`
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%231f4452'/%3E%3Ccircle cx='24' cy='24' r='14' fill='%23c9a84c'/%3E%3C/svg%3E" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
           <div>
             <h2>Seminário William Seymour</h2>
             <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
@@ -438,7 +454,7 @@
           </div>
           <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
         </form>
-      `);
+      `, "login");
       $("formLogin").addEventListener("submit", handleLogin);
     };
 
@@ -454,7 +470,7 @@
           </div>
           <div class="error-msg" id="err">Usuário/E-mail não encontrado.</div>
         </form>
-      `);
+      `, "login");
       $("formReset").addEventListener("submit", async (e) => {
         e.preventDefault();
         let email = resolveEmail($("resetInput").value);
@@ -471,7 +487,7 @@
     window.showRegisterModal = () => {
       openModal(`
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%231f4452'/%3E%3Ccircle cx='24' cy='24' r='14' fill='%23c9a84c'/%3E%3C/svg%3E" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
           <div>
             <h2>Cadastrar Aluno</h2>
             <p class="modal-subtitle" style="margin: 0;">Adicione um novo usuário.</p>
@@ -890,5 +906,6 @@
       }, 500);
     }
   </script>
+<button onclick="toggleTheme()" style="position:fixed;right:12px;bottom:12px;z-index:2000;padding:8px 12px;border-radius:8px;border:1px solid #888;background:#fff;color:#222;font:600 12px system-ui;cursor:pointer;opacity:.9">🌓 Alternar tema (só na prévia)</button>
 </body>
 </html>
