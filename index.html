@@ -170,655 +170,259 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import {  
-      getAuth,   
-      signInWithEmailAndPassword,   
-      createUserWithEmailAndPassword,   
-      sendPasswordResetEmail,
-      onAuthStateChanged,   
-      signOut   
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import {  
-      getFirestore,   
-      doc,   
-      getDoc,   
-      setDoc   
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyALfbAdFPcn4027CjcGdEVEiJ-kCKQ_D9M",
-      authDomain: "sws-ead.firebaseapp.com",
-      projectId: "sws-ead",
-      storageBucket: "sws-ead.firebasestorage.app",
-      messagingSenderId: "175788775189",
-      appId: "1:175788775189:web:8952b0f3eba14c4355bb1c"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  // Inicialização das instâncias do Firebase
+  const auth = getAuth();
+  const db = getFirestore();
 
-    const initialCourseData = [
-      {
-        id: 1,
-        name: "Módulo I",
-        materias: [
-          {
-            id: "mat_teo",
-            title: "Teologia",
-            lessons: [
-              { id: "m1_teo_intro", name: "Introdução", playlist: null },
-              { id: "m1_teo_cap1", name: "Capítulo 1: A existência e a revelação de Deus", playlist: null },
-              { id: "m1_teo_cap2", name: "Capítulo 2: Os atributos e a sua criação", playlist: null },
-              { id: "m1_teo_cap3", name: "Capítulo 3: Os decretos e a providência de Deus", playlist: null },
-              { id: "m1_teo_cap4", name: "Capítulo 4: Os nomes de Deus e os Credos", playlist: null },
-              { id: "m1_teo_cap5", name: "Capítulo 5: A Santíssima Trindade", playlist: null },
-              { id: "m1_teo_conc", name: "Conclusão", playlist: null }
-            ]
-          },
-          {
-            id: "mat_cristo",
-            title: "Cristologia",
-            lessons: [
-              { id: "m1_cristo_1", name: "Capítulo 1: A Pessoa de Cristo", playlist: null }
-            ]
-          },
-          {
-            id: "mat_pneumat",
-            title: "Pneumatologia",
-            lessons: [
-              { id: "m1_pneumat_1", name: "Capítulo 1: O Espírito Santo", playlist: null }
-            ]
-          },
-          {
-            id: "mat_etica",
-            title: "Ética Cristã",
-            lessons: [
-              { id: "m1_etica_1", name: "Capítulo 1: Fundamentos da Ética", playlist: null }
-            ]
-          }
-        ]
-      },
-      {
-        id: 2,
-        name: "Módulo II",
-        materias: [
-          {
-            id: "mat_m2_1", title: "Introdução Bíblica",
-            lessons: [{ id: "m2_1_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m2_2", title: "Panorama do AT",
-            lessons: [{ id: "m2_2_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m2_3", title: "Período Interbíblico",
-            lessons: [{ id: "m2_3_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m2_4", title: "Panorama do NT",
-            lessons: [{ id: "m2_4_1", name: "Aulas da Disciplina", playlist: null }]
-          }
-        ]
-      },
-      {
-        id: 3,
-        name: "Módulo III",
-        materias: [
-          {
-            id: "mat_m3_1", title: "Geografia Bíblica",
-            lessons: [{ id: "m3_1_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m3_2", title: "História de Israel",
-            lessons: [{ id: "m3_2_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m3_3", title: "História da Igreja",
-            lessons: [{ id: "m3_3_1", name: "Aulas da Disciplina", playlist: null }]
-          },
-          {
-            id: "mat_m3_4", title: "Eclesiologia",
-            lessons: [{ id: "m3_4_1", name: "Aulas da Disciplina", playlist: null }]
-          }
-        ]
-      },
-      {
-        id: 4,
-        name: "Módulo IV",
-        materias: [
-          {
-            id: "mat_m4_1", title: "Hermenêutica",
-            lessons: [{ id: "m4_1", name: "Aulas de Hermenêutica", playlist: "PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke" }]
-          },
-          {
-            id: "mat_m4_2", title: "Homilética",
-            lessons: [{ id: "m4_2", name: "Aulas de Homilética", playlist: "PLYTvo-pfIcGLsefbBMkuzDippSDowKruJ" }]
-          },
-          {
-            id: "mat_m4_3", title: "Evangelismo",
-            lessons: [{ id: "m4_3", name: "Aulas de Evangelismo", playlist: "PLYTvo-pfIcGJyW6W3p3nkJqcaeqiMp2Gv" }]
-          },
-          {
-            id: "mat_m4_4", title: "Missiologia",
-            lessons: [{ id: "m4_4", name: "Aulas de Missiologia", playlist: "PLYTvo-pfIcGK4Wb1MOFoEg6IObRbS8YxG" }]
-          }
-        ]
-      },
-      {
-        id: 5,
-        name: "Módulo V",
-        materias: [
-          { id: "mat_m5_1", title: "Antropologia", lessons: [{ id: "m5_1", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_2", title: "Hamartiologia", lessons: [{ id: "m5_2", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_3", title: "Angelologia", lessons: [{ id: "m5_3", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_4", title: "Família Cristã", lessons: [{ id: "m5_4", name: "Aulas da Disciplina", playlist: null }] }
-        ]
-      },
-      {
-        id: 6,
-        name: "Módulo VI",
-        materias: [
-          { id: "mat_m6_1", title: "Escatologia", lessons: [{ id: "m6_1", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_2", title: "Soteriologia", lessons: [{ id: "m6_2", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_3", title: "Liturgia Cristã", lessons: [{ id: "m6_3", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_4", title: "Língua Portuguesa", lessons: [{ id: "m6_4", name: "Aulas da Disciplina", playlist: null }] }
-        ]
-      }
-    ];
+  // Variáveis de controle do Player e Progresso
+  let ytPlayer = null;
+  let progressInterval = null;
+  let pendingSubjectId = null;
+  let maxWatchedTime = 0;
+  let currentVideoLoadedId = null;
+  let activeSubjectId = null;
+  let userProgressCache = {}; // Cache local do progresso do usuário logado
 
-    let courseData = initialCourseData;
-    let currentUser = null;
-    let activeSubjectId = null;
+  const $ = (id) => document.getElementById(id);
 
-    const $ = id => document.getElementById(id);
+  // -----------------------------------------------------------------
+  // 1. HELPER: PARSER DE URL DO YOUTUBE
+  // -----------------------------------------------------------------
+  function parseYouTubeUrl(url) {
+    if (!url) return { videoId: null, playlistId: null };
+    
+    let videoId = null;
+    let playlistId = null;
 
-    function parseYouTubeUrl(url) {
-      if (!url) return { videoId: "", playlistId: "" };
-      let str = url.trim();
-      let playlistId = "";
-      let videoId = "";
+    const playlistMatch = url.match(/[?&]list=([^#&?]+)/);
+    if (playlistMatch) playlistId = playlistMatch[1];
 
-      if (str.includes("list=")) {
-        playlistId = str.split("list=")[1].split("&")[0];
-      } else if (str.startsWith("PL")) {
-        playlistId = str;
-      }
+    const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    if (videoMatch) videoId = videoMatch[1];
 
-      if (str.includes("youtu.be/")) {
-        videoId = str.split("youtu.be/")[1].split("?")[0].split("&")[0];
-      } else if (str.includes("v=")) {
-        videoId = str.split("v=")[1].split("&")[0];
-      } else if (!playlistId && str.length === 11) {
-        videoId = str;
-      }
+    return { videoId, playlistId };
+  }
 
-      return { videoId, playlistId };
+  // -----------------------------------------------------------------
+  // 2. SINCRONIZAÇÃO DE PROGRESSO (FIREBASE FIRESTORE)
+  // -----------------------------------------------------------------
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      await loadUserProgressFromCloud(user.uid);
+    } else {
+      userProgressCache = {};
+      updateOverallProgressUI();
     }
+  });
 
-    function getAllLessons() {
-      let list = [];
-      courseData.forEach(m => {
-        if (m.materias) {
-          m.materias.forEach(mat => {
-            if (mat.lessons) {
-              mat.lessons.forEach(l => {
-                list.push({ ...l, materiaTitle: mat.title });
-              });
-            }
-          });
-        }
-      });
-      return list;
-    }
+  async function loadUserProgressFromCloud(uid) {
+    try {
+      const docRef = doc(db, "usersProgress", uid);
+      const docSnap = await getDoc(docRef);
 
-    async function saveCourseData() {
-      try {
-        await setDoc(doc(db, "cursos", "geral_v3"), { modules: courseData });
-        renderModules();
-      } catch (error) {
-        console.error("Erro ao salvar no Firestore:", error);
-      }
-    }
-
-    async function loadCourseDataFromCloud() {
-      try {
-        const docRef = doc(db, "cursos", "geral_v3");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().modules) {
-          courseData = docSnap.data().modules;
-        } else {
-          await setDoc(docRef, { modules: initialCourseData });
-        }
-      } catch (error) {
-        console.error("Erro ao carregar do Firestore:", error);
-      }
-      renderModules();
-    }
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user.email;
-        closeModal();
-        $("mainContainer").classList.add("active");
-        document.body.style.justifyContent = "flex-start";
-        setupUserSession();
+      if (docSnap.exists()) {
+        userProgressCache = docSnap.data().lessons || {};
       } else {
-        currentUser = null;
-        $("mainContainer").classList.remove("active");
-        document.body.style.justifyContent = "center";
-        showLoginModal();
+        userProgressCache = {};
+      }
+      updateOverallProgressUI();
+    } catch (error) {
+      console.error("Erro ao carregar progresso da nuvem:", error);
+      updateOverallProgressUI();
+    }
+  }
+
+  window.getProgress = () => userProgressCache;
+
+  window.setProgress = async (subId, percent) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    userProgressCache[subId] = percent;
+    updateOverallProgressUI();
+
+    try {
+      const docRef = doc(db, "usersProgress", user.uid);
+      await setDoc(docRef, {
+        lessons: userProgressCache,
+        lastUpdated: new Date()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Erro ao salvar progresso na nuvem:", error);
+    }
+  };
+
+  function updateOverallProgressUI() {
+    // Tenta atualizar a lista/links de aulas na interface caso exista a função de renderização
+    if (typeof window.renderLessonsList === 'function') {
+      window.renderLessonsList();
+    } else if (typeof window.renderUI === 'function') {
+      window.renderUI();
+    }
+
+    if (typeof window.getAllLessons !== 'function') return;
+    
+    const allLessons = window.getAllLessons();
+    if (!allLessons || allLessons.length === 0) return;
+
+    let totalPercent = 0;
+    allLessons.forEach(lesson => {
+      totalPercent += (userProgressCache[lesson.id] || 0);
+    });
+
+    const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
+
+    if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
+    if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
+  }
+
+  // -----------------------------------------------------------------
+  // 3. YOUTUBE IFRAME API & CONTROLE DO PLAYER
+  // -----------------------------------------------------------------
+
+  if (!window.YT) {
+    let tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    let firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  }
+
+  window.onYouTubeIframeAPIReady = () => {
+    if (pendingSubjectId) {
+      window.openSubject(pendingSubjectId);
+      pendingSubjectId = null;
+    }
+  };
+
+  window.closePlayer = () => {
+    if (progressInterval) clearInterval(progressInterval);
+    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+      ytPlayer.destroy();
+      ytPlayer = null;
+    }
+    if ($("playerArea")) $("playerArea").classList.remove("active");
+    if ($("player")) $("player").innerHTML = "";
+    activeSubjectId = null;
+    maxWatchedTime = 0;
+    currentVideoLoadedId = null;
+  };
+
+  window.openSubject = (subId) => {
+    if (typeof window.getAllLessons !== 'function') return;
+
+    let sub = window.getAllLessons().find(s => s.id === subId);
+    if (!sub) return;
+
+    if (!sub.playlist) {
+      alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
+      return;
+    }
+
+    if (!window.YT || !window.YT.Player) {
+      pendingSubjectId = subId;
+      return;
+    }
+
+    window.closePlayer();
+    activeSubjectId = subId;
+    if ($("playerArea")) $("playerArea").classList.add("active");
+    if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle || ''} - ${sub.name || ''}`;
+
+    const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
+    const currentSavedPercent = window.getProgress()[subId] || 0;
+
+    let playerVars = {
+      autoplay: 1,
+      rel: 0,
+      modestbranding: 1
+    };
+
+    if (playlistId) {
+      playerVars.listType = 'playlist';
+      playerVars.list = playlistId;
+    }
+
+    ytPlayer = new YT.Player('player', {
+      videoId: videoId || undefined,
+      playerVars: playerVars,
+      events: {
+        'onReady': (event) => {
+          const duration = ytPlayer.getDuration();
+          if (duration > 0 && currentSavedPercent > 0) {
+            maxWatchedTime = (currentSavedPercent / 100) * duration;
+            ytPlayer.seekTo(maxWatchedTime, true);
+          } else {
+            maxWatchedTime = 0;
+          }
+          startProgressTracker(subId);
+        },
+        'onStateChange': (event) => {
+          if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
+            const videoData = ytPlayer.getVideoData();
+            if (videoData && videoData.video_id !== currentVideoLoadedId) {
+              currentVideoLoadedId = videoData.video_id;
+              if (maxWatchedTime > ytPlayer.getDuration()) {
+                maxWatchedTime = 0;
+              }
+            }
+          }
+
+          if (event.data === YT.PlayerState.PLAYING) {
+            startProgressTracker(subId);
+          } else if (event.data === YT.PlayerState.PAUSED) {
+            if (progressInterval) clearInterval(progressInterval);
+          } else if (event.data === YT.PlayerState.ENDED) {
+            if (progressInterval) clearInterval(progressInterval);
+            if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
+            if ($("simSlider")) $("simSlider").value = 100;
+            window.setProgress(subId, 100);
+          }
+        }
       }
     });
 
-    window.closeModal = () => { $("modalOverlay").style.display = "none"; };
-    window.openModal = (html) => { $("modalContent").innerHTML = html; $("modalOverlay").style.display = "flex"; };
+    if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
+  };
 
-    window.showLoginModal = () => {
-      openModal(`
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
-          <div>
-            <h2>Seminário William Seymour</h2>
-            <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
-          </div>
-        </div>
-        <form id="formLogin">
-          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
-          <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
-          <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
-          <div style="text-align:center;">
-            <button type="button" class="link-btn" onclick="showResetModal()">Esqueceu a senha?</button>
-          </div>
-          <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
-        </form>
-      `);
-      $("formLogin").addEventListener("submit", handleLogin);
-    };
+  function startProgressTracker(subId) {
+    if (progressInterval) clearInterval(progressInterval);
 
-    window.showResetModal = () => {
-      openModal(`
-        <h2>Recuperação de Senha</h2>
-        <p class="modal-subtitle">Digite seu nome de usuário ou e-mail cadastrado.</p>
-        <form id="formReset">
-          <div class="form-group"><label>Usuário ou E-mail</label><input type="text" id="resetInput" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
-          <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn btn-primary" type="submit" style="flex:1;">Enviar Link</button>
-            <button class="btn btn-secondary" type="button" onclick="showLoginModal()" style="flex:1;">Voltar</button>
-          </div>
-          <div class="error-msg" id="err">Usuário/E-mail não encontrado.</div>
-        </form>
-      `);
-      $("formReset").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        let email = resolveEmail($("resetInput").value);
-        try {
-          await sendPasswordResetEmail(auth, email);
-          alert("E-mail de redefinição enviado com sucesso!");
-          showLoginModal();
-        } catch (err) {
-          $("err").style.display = "block";
-        }
-      });
-    };
+    progressInterval = setInterval(() => {
+      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
 
-    window.showRegisterModal = () => {
-      openModal(`
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
-          <div>
-            <h2>Cadastrar Aluno</h2>
-            <p class="modal-subtitle" style="margin: 0;">Adicione um novo usuário.</p>
-          </div>
-        </div>
-        <form id="formRegister">
-          <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="nu" placeholder="Ex: marcos ou aluno@exemplo.com" required></div>
-          <div class="form-group"><label>Senha Inicial</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
-          <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
-            <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
-          </div>
-          <div class="error-msg" id="err">Erro ao cadastrar usuário.</div>
-        </form>
-      `);
-      $("formRegister").addEventListener("submit", handleRegister);
-    };
+      const currentTime = ytPlayer.getCurrentTime();
+      const duration = ytPlayer.getDuration();
 
-    window.showLinkModal = (subId) => {
-      let sub = getAllLessons().find(s => s.id === subId);
-      openModal(`
-        <h2>Editar Aula / Capítulo</h2>
-        <p class="modal-subtitle">${sub ? sub.name : ''}</p>
-        <form id="formLink">
-          <div class="form-group">
-            <label>Link do Vídeo ou Playlist do YouTube</label>
-            <input type="text" id="vLink" value="${sub?.playlist || ''}" placeholder="Cole o link do YouTube aqui">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-            <button class="btn btn-primary" type="submit">💾 Salvar Alterações</button>
-            <div style="display:flex; gap:10px;">
-              <button class="btn btn-danger" type="button" id="btnDeleteLink" style="flex:1;">🗑 Remover Link</button>
-              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
-            </div>
-          </div>
-        </form>
-      `);
-      $("formLink").addEventListener("submit", (e) => handleSaveLink(e, subId));
-      $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
-    };
+      if (!duration || duration === 0) return;
 
-    function resolveEmail(input) {
-      let trimmed = input.trim().toLowerCase();
-      if (trimmed.includes('@')) {
-        return trimmed;
-      }
-      let cleanName = trimmed.replace(/\s+/g, '');
-      return `infosolucoesse+${cleanName}@gmail.com`;
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      let email = resolveEmail($("u").value);
-      let senha = $("p").value.trim();
-      try {
-        await signInWithEmailAndPassword(auth, email, senha);
-        closeModal();
-      } catch (error) {
-        $("err").style.display = "block";
-      }
-    }
-
-    async function handleRegister(e) {
-      e.preventDefault();
-      let rawInput = $("nu").value.trim();
-      let email = resolveEmail(rawInput);
-      let senha = $("np").value.trim();
-      try {
-        await createUserWithEmailAndPassword(auth, email, senha);
-        alert(`Usuário '${rawInput}' cadastrado com sucesso!`);
-        closeModal();
-      } catch (error) {
-        $("err").style.display = "block";
-      }
-    }
-
-    window.handleLogout = () => {
-      signOut(auth).then(() => { location.reload(); });
-    };
-
-    async function setupUserSession() {
-      let displayName = currentUser.includes('+') && currentUser.includes('@gmail.com')
-        ? currentUser.split('+')[1].split('@')[0].charAt(0).toUpperCase() + currentUser.split('+')[1].split('@')[0].slice(1)
-        : (currentUser.endsWith('@sws-ead.internal') ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1) : currentUser);
-      
-      $("currentUserName").textContent = displayName;
-      
-      let emailLower = currentUser.toLowerCase();
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
-      
-      $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
-      $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
-      await loadCourseDataFromCloud();
-      updateOverallProgress();
-    }
-
-    async function handleSaveLink(e, subId) {
-      e.preventDefault();
-      let val = $("vLink").value.trim();
-      courseData.forEach(m => {
-        m.materias?.forEach(mat => {
-          mat.lessons?.forEach(l => {
-            if (l.id === subId) l.playlist = val || null;
-          });
-        });
-      });
-      await saveCourseData(); 
-      closeModal();
-    }
-
-    async function handleDeleteLink(subId) {
-      if (!confirm("Remover o link desta aula?")) return;
-      courseData.forEach(m => {
-        m.materias?.forEach(mat => {
-          mat.lessons?.forEach(l => {
-            if (l.id === subId) l.playlist = null;
-          });
-        });
-      });
-      await saveCourseData(); 
-      closeModal();
-      if (activeSubjectId === subId) closePlayer();
-    }
-
-    const getProgress = () => JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}");
-
-    function setProgress(subId, val) {
-      let p = getProgress(); p[subId] = parseInt(val, 10);
-      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(p));
-      updateOverallProgress(); renderModules();
-    }
-
-    function updateOverallProgress() {
-      let p = getProgress(), subs = getAllLessons();
-      if (!subs.length) return;
-      let sum = subs.reduce((acc, s) => acc + (p[s.id] || 0), 0);
-      let total = Math.round(sum / subs.length) || 0;
-      $("overallBar").style.width = total + "%";
-      $("overallPercent").textContent = total + "%";
-    }
-
-    window.renderModules = () => {
-      let search = $("searchInput").value.toLowerCase().trim();
-      let emailLower = currentUser?.toLowerCase() || "";
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
-      let prog = getProgress();
-      let html = "";
-
-      courseData.forEach(m => {
-        let materiasHtml = "";
-        let moduleHasMatches = false;
-
-        m.materias.forEach(mat => {
-          let filteredLessons = mat.lessons.filter(l => 
-            l.name.toLowerCase().includes(search) || mat.title.toLowerCase().includes(search)
-          );
-
-          if (search && !filteredLessons.length) return;
-          moduleHasMatches = true;
-
-          let lessonsList = search ? filteredLessons : mat.lessons;
-          let lessonsCardsHtml = lessonsList.map(s => {
-            let p = prog[s.id] || 0, avail = Boolean(s.playlist);
-            return `
-              <div class="subject-card">
-                <div class="subject-top">
-                  <span class="subject-title" onclick="openSubject('${s.id}')">${s.name}</span>
-                  <div>
-                    ${isAdmin ? `<button class="edit-btn" onclick="showLinkModal('${s.id}')">⚙️ Link</button>` : ''}
-                    <button class="action-btn ${avail ? 'available' : ''}" onclick="openSubject('${s.id}')">
-                      ${avail ? '▶ Assistir' : 'Indisponível'}
-                    </button>
-                  </div>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted);">
-                  <span>Progresso</span><span>${p}%</span>
-                </div>
-              </div>
-            `;
-          }).join("");
-
-          materiasHtml += `
-            <div class="materia-block">
-              <div class="materia-header">📖 ${mat.title}</div>
-              <div class="subjects-grid">${lessonsCardsHtml}</div>
-            </div>
-          `;
-        });
-
-        if (search && !moduleHasMatches) return;
-
-        html += `
-          <div class="module ${search ? 'open' : ''}" id="mod-${m.id}">
-            <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
-              <span>📌 ${m.name}</span><span>▼</span>
-            </button>
-            <div class="module-content">${materiasHtml}</div>
-          </div>
-        `;
-      });
-      $("modulesContainer").innerHTML = html;
-    };
-
-   let ytPlayer = null;
-    let progressInterval = null;
-    let pendingSubjectId = null;
-    let maxWatchedTime = 0;
-    let currentVideoLoadedId = null;
-
-    if (!window.YT) {
-      let tag = document.createElement('script');
-      tag.src = "https://www.youtube.com/iframe_api";
-      let firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-    }
-
-    window.onYouTubeIframeAPIReady = () => {
-      if (pendingSubjectId) {
-        window.openSubject(pendingSubjectId);
-        pendingSubjectId = null;
-      }
-    };
-
-    window.closePlayer = () => {
-      if (progressInterval) clearInterval(progressInterval);
-      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-        ytPlayer.destroy();
-        ytPlayer = null;
-      }
-      if ($("playerArea")) $("playerArea").classList.remove("active");
-      if ($("player")) $("player").innerHTML = "";
-      activeSubjectId = null;
-      maxWatchedTime = 0;
-      currentVideoLoadedId = null;
-    };
-
-    window.openSubject = (subId) => {
-      let sub = getAllLessons().find(s => s.id === subId);
-      if (!sub) return;
-
-      if (!sub.playlist) {
-        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
+      // TRAVA DE AVANÇO: Impede saltar para a frente além do tempo já assistido
+      if (currentTime > maxWatchedTime + 1.5) {
+        ytPlayer.seekTo(maxWatchedTime, true);
         return;
       }
 
-      if (!window.YT || !window.YT.Player) {
-        pendingSubjectId = subId;
-        return;
+      if (currentTime > maxWatchedTime) {
+        maxWatchedTime = currentTime;
       }
 
-      closePlayer();
-      activeSubjectId = subId;
-      if ($("playerArea")) $("playerArea").classList.add("active");
-      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle} - ${sub.name}`;
-
-      const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
+      const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
       
-      const prog = getProgress();
-      const currentSavedPercent = prog[subId] || 0;
+      if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
+      if ($("simSlider")) $("simSlider").value = percent;
 
-      let playerVars = {
-        autoplay: 1,
-        rel: 0,
-        modestbranding: 1
-      };
-
-      if (playlistId) {
-        playerVars.listType = 'playlist';
-        playerVars.list = playlistId;
+      const currentProg = window.getProgress()[subId] || 0;
+      // Salva no Firestore a cada 2% de avanço acumulado ou ao concluir 100%
+      if (percent >= currentProg + 2 || percent === 100) {
+        window.setProgress(subId, percent);
       }
-
-      ytPlayer = new YT.Player('player', {
-        videoId: videoId || undefined,
-        playerVars: playerVars,
-        events: {
-          'onReady': (event) => {
-            const duration = ytPlayer.getDuration();
-            if (duration > 0 && currentSavedPercent > 0) {
-              maxWatchedTime = (currentSavedPercent / 100) * duration;
-              ytPlayer.seekTo(maxWatchedTime, true);
-            } else {
-              maxWatchedTime = 0;
-            }
-            
-            startProgressTracker(subId);
-          },
-          'onStateChange': (event) => {
-            if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
-              const videoData = ytPlayer.getVideoData();
-              if (videoData && videoData.video_id !== currentVideoLoadedId) {
-                currentVideoLoadedId = videoData.video_id;
-                if (maxWatchedTime > ytPlayer.getDuration()) {
-                  maxWatchedTime = 0;
-                }
-              }
-            }
-
-            if (event.data === YT.PlayerState.PLAYING) {
-              startProgressTracker(subId);
-            } else if (event.data === YT.PlayerState.PAUSED) {
-              if (progressInterval) clearInterval(progressInterval);
-            } else if (event.data === YT.PlayerState.ENDED) {
-              if (progressInterval) clearInterval(progressInterval);
-              if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
-              if ($("simSlider")) $("simSlider").value = 100;
-              setProgress(subId, 100);
-            }
-          }
-        }
-      });
-
-      if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
-    };
-
-    function startProgressTracker(subId) {
-      if (progressInterval) clearInterval(progressInterval);
-
-      progressInterval = setInterval(() => {
-        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-
-        const currentTime = ytPlayer.getCurrentTime();
-        const duration = ytPlayer.getDuration();
-
-        if (!duration || duration === 0) return;
-
-        const currentSavedPercent = getProgress()[subId] || 0;
-        if (maxWatchedTime === 0 && currentSavedPercent > 0) {
-          maxWatchedTime = (currentSavedPercent / 100) * duration;
-          ytPlayer.seekTo(maxWatchedTime, true);
-        }
-
-        // TRAVA DE AVANÇO: Se avançar mais de 1.5s além do máximo assistido
-        if (currentTime > maxWatchedTime + 1.5) {
-          ytPlayer.seekTo(maxWatchedTime, true);
-          return;
-        }
-
-        if (currentTime > maxWatchedTime) {
-          maxWatchedTime = currentTime;
-        }
-
-        const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
-        
-        if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
-        if ($("simSlider")) $("simSlider").value = percent;
-
-        const currentProg = getProgress()[subId] || 0;
-        if (percent > currentProg) {
-          setProgress(subId, percent);
-        }
-      }, 500);
-    }
-  </script>
+    }, 500);
+  }
+</script>
 </body>
 </html>
