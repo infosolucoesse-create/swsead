@@ -1,239 +1,250 @@
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-  // Inicialização do Firebase (utilize a sua configuração existente)
-  const auth = getAuth();
-  const db = getFirestore();
-
-  // Variáveis globais do Player e Controle de Progresso
-  let ytPlayer = null;
-  let progressInterval = null;
-  let pendingSubjectId = null;
-  let maxWatchedTime = 0;
-  let currentVideoLoadedId = null;
-  let userProgressCache = {}; // Cache local em memória para evitar leituras excessivas
-
-  // Helper para seleção de elementos do DOM
-  const $ = (id) => document.getElementById(id);
-
-  // -----------------------------------------------------------------
-  // 1. SINCRONIZAÇÃO DE PROGRESSO COM O FIREBASE FIRESTORE
-  // -----------------------------------------------------------------
-
-  // Carrega o progresso salvo na nuvem assim que o usuário se autentica
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      await loadUserProgressFromCloud(user.uid);
-    } else {
-      userProgressCache = {};
-      updateOverallProgressUI();
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plataforma de Aulas</title>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
     }
-  });
 
-  async function loadUserProgressFromCloud(uid) {
-    try {
-      const docRef = doc(db, "usersProgress", uid);
-      const docSnap = await getDoc(docRef);
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+    }
 
-      if (docSnap.exists()) {
-        userProgressCache = docSnap.data().lessons || {};
-      } else {
-        userProgressCache = {};
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .player-area {
+      display: none;
+      margin-top: 20px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .player-area.active {
+      display: block;
+    }
+
+    .video-wrapper {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: 6px;
+      background: #000;
+    }
+
+    .video-wrapper iframe, .video-wrapper #player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .player-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    button.btn-close {
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.btn-close:hover {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Aulas & Videoaulas</h1>
+    </header>
+
+    <!-- Área do Player de Vídeo -->
+    <div id="playerArea" class="player-area">
+      <h2 id="playerTitle">Título da Aula</h2>
+      <div class="video-wrapper">
+        <div id="player"></div>
+      </div>
+      <div class="player-controls">
+        <span id="simPercentText">0% assistido</span>
+        <button class="btn-close" onclick="window.closePlayer()">Fechar Player</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Função auxiliar seletora DOM
+    const $ = (id) => document.getElementById(id);
+
+    // Estado global da aplicação
+    let activeSubjectId = null;
+
+    // Funções auxiliares (Exemplo / Substitua pelas suas regras de banco de dados se houver)
+    function getAllLessons() {
+      return [
+        { id: '1', materiaTitle: 'Matemática', name: 'Álgebra Básica', playlist: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }
+      ];
+    }
+
+    function parseYouTubeUrl(url) {
+      let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      let match = url.match(regExp);
+      let videoId = (match && match[2].length === 11) ? match[2] : null;
+
+      let playlistMatch = url.match(/[?&]list=([^#\&\?]+)/);
+      let playlistId = playlistMatch ? playlistMatch[1] : null;
+
+      return { videoId, playlistId };
+    }
+
+    function getProgress() {
+      return JSON.parse(localStorage.getItem('userProgress') || '{}');
+    }
+
+    function setProgress(subjectId, percent) {
+      let prog = getProgress();
+      prog[subjectId] = percent;
+      localStorage.setItem('userProgress', JSON.stringify(prog));
+    }
+
+    // Gerenciamento do Player do YouTube
+    let ytPlayer = null;
+    let progressInterval = null;
+    let pendingSubjectId = null;
+    let maxWatchedTime = 0;
+
+    if (!window.YT) {
+      let tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      let firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      if (pendingSubjectId) {
+        window.openSubject(pendingSubjectId);
+        pendingSubjectId = null;
       }
-      updateOverallProgressUI();
-    } catch (error) {
-      console.error("Erro ao carregar progresso da nuvem:", error);
-    }
-  }
-
-  window.getProgress = () => userProgressCache;
-
-  window.setProgress = async (subId, percent) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    // Atualiza imediatamente em memória
-    userProgressCache[subId] = percent;
-    updateOverallProgressUI();
-
-    try {
-      // Salva no banco de dados
-      const docRef = doc(db, "usersProgress", user.uid);
-      await setDoc(docRef, {
-        lessons: userProgressCache,
-        lastUpdated: new Date()
-      }, { merge: true });
-    } catch (error) {
-      console.error("Erro ao salvar progresso na nuvem:", error);
-    }
-  };
-
-  function updateOverallProgressUI() {
-    if (typeof getAllLessons !== 'function') return;
-    
-    const allLessons = getAllLessons();
-    if (!allLessons || allLessons.length === 0) return;
-
-    let totalPercent = 0;
-    allLessons.forEach(lesson => {
-      totalPercent += (userProgressCache[lesson.id] || 0);
-    });
-
-    const overallPercent = Math.min(100, Math.floor(totalPercent / allLessons.length));
-
-    // Atualiza os elementos da barra de progresso do topo
-    if ($("overallPercentText")) $("overallPercentText").textContent = `${overallPercent}%`;
-    if ($("overallProgressBar")) $("overallProgressBar").style.width = `${overallPercent}%`;
-  }
-
-  // -----------------------------------------------------------------
-  // 2. YOUTUBE IFRAME API & TRAVA DE AVANÇO
-  // -----------------------------------------------------------------
-
-  if (!window.YT) {
-    let tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    let firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-  }
-
-  window.onYouTubeIframeAPIReady = () => {
-    if (pendingSubjectId) {
-      window.openSubject(pendingSubjectId);
-      pendingSubjectId = null;
-    }
-  };
-
-  window.closePlayer = () => {
-    if (progressInterval) clearInterval(progressInterval);
-    if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-      ytPlayer.destroy();
-      ytPlayer = null;
-    }
-    if ($("playerArea")) $("playerArea").classList.remove("active");
-    if ($("player")) $("player").innerHTML = "";
-    activeSubjectId = null;
-    maxWatchedTime = 0;
-    currentVideoLoadedId = null;
-  };
-
-  window.openSubject = (subId) => {
-    let sub = getAllLessons().find(s => s.id === subId);
-    if (!sub) return;
-
-    if (!sub.playlist) {
-      alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
-      return;
-    }
-
-    if (!window.YT || !window.YT.Player) {
-      pendingSubjectId = subId;
-      return;
-    }
-
-    closePlayer();
-    activeSubjectId = subId;
-    if ($("playerArea")) $("playerArea").classList.add("active");
-    if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle} - ${sub.name}`;
-
-    const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
-    const currentSavedPercent = getProgress()[subId] || 0;
-
-    let playerVars = {
-      autoplay: 1,
-      rel: 0,
-      modestbranding: 1
     };
 
-    if (playlistId) {
-      playerVars.listType = 'playlist';
-      playerVars.list = playlistId;
-    }
-
-    ytPlayer = new YT.Player('player', {
-      videoId: videoId || undefined,
-      playerVars: playerVars,
-      events: {
-        'onReady': (event) => {
-          const duration = ytPlayer.getDuration();
-          if (duration > 0 && currentSavedPercent > 0) {
-            maxWatchedTime = (currentSavedPercent / 100) * duration;
-            ytPlayer.seekTo(maxWatchedTime, true);
-          } else {
-            maxWatchedTime = 0;
-          }
-          
-          startProgressTracker(subId);
-        },
-        'onStateChange': (event) => {
-          if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
-            const videoData = ytPlayer.getVideoData();
-            if (videoData && videoData.video_id !== currentVideoLoadedId) {
-              currentVideoLoadedId = videoData.video_id;
-              if (maxWatchedTime > ytPlayer.getDuration()) {
-                maxWatchedTime = 0;
-              }
-            }
-          }
-
-          if (event.data === YT.PlayerState.PLAYING) {
-            startProgressTracker(subId);
-          } else if (event.data === YT.PlayerState.PAUSED) {
-            if (progressInterval) clearInterval(progressInterval);
-          } else if (event.data === YT.PlayerState.ENDED) {
-            if (progressInterval) clearInterval(progressInterval);
-            if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
-            if ($("simSlider")) $("simSlider").value = 100;
-            setProgress(subId, 100);
-          }
-        }
+    window.closePlayer = () => {
+      if (progressInterval) clearInterval(progressInterval);
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+        ytPlayer = null;
       }
-    });
+      $("playerArea").classList.remove("active");
+      $("player").innerHTML = "";
+      activeSubjectId = null;
+      maxWatchedTime = 0;
+    };
 
-    if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
-  };
+    window.openSubject = (subId) => {
+      let sub = getAllLessons().find(s => s.id === subId);
+      if (!sub) return;
 
-  function startProgressTracker(subId) {
-    if (progressInterval) clearInterval(progressInterval);
-
-    progressInterval = setInterval(() => {
-      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-
-      const currentTime = ytPlayer.getCurrentTime();
-      const duration = ytPlayer.getDuration();
-
-      if (!duration || duration === 0) return;
-
-      const currentSavedPercent = getProgress()[subId] || 0;
-      if (maxWatchedTime === 0 && currentSavedPercent > 0) {
-        maxWatchedTime = (currentSavedPercent / 100) * duration;
-        ytPlayer.seekTo(maxWatchedTime, true);
-      }
-
-      // TRAVA DE AVANÇO: Bloqueia pulo manual além do máximo assistido
-      if (currentTime > maxWatchedTime + 1.5) {
-        ytPlayer.seekTo(maxWatchedTime, true);
+      if (!sub.playlist) {
+        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
         return;
       }
 
-      if (currentTime > maxWatchedTime) {
-        maxWatchedTime = currentTime;
+      if (!window.YT || !window.YT.Player) {
+        pendingSubjectId = subId;
+        alert("Carregando o player do YouTube, por favor tente novamente em instantes.");
+        return;
       }
 
-      const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
+      activeSubjectId = subId;
+      $("playerTitle").textContent = `${sub.materiaTitle} - ${sub.name}`;
+      $("playerArea").classList.add("active");
+      $("playerArea").scrollIntoView({ behavior: 'smooth' });
+
+      let parsed = parseYouTubeUrl(sub.playlist);
+      let playerConfig = {
+        height: '100%',
+        width: '100%',
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1
+        },
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      };
+
+      if (parsed.playlistId) {
+        playerConfig.playerVars.listType = 'playlist';
+        playerConfig.playerVars.list = parsed.playlistId;
+      } else if (parsed.videoId) {
+        playerConfig.videoId = parsed.videoId;
+      } else {
+        alert("O link do YouTube configurado não é válido.");
+        return;
+      }
+
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+      }
+
+      ytPlayer = new YT.Player('player', playerConfig);
+    };
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(trackVideoProgress, 1000);
+      } else {
+        if (progressInterval) clearInterval(progressInterval);
+      }
+    }
+
+    function trackVideoProgress() {
+      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
       
-      if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
-      if ($("simSlider")) $("simSlider").value = percent;
+      let currentTime = ytPlayer.getCurrentTime();
+      let duration = ytPlayer.getDuration();
 
-      const currentProg = getProgress()[subId] || 0;
-      // Atualiza na nuvem a cada ganho relevante de porcentagem (2% ou mais)
-      if (percent >= currentProg + 2 || percent === 100) {
-        setProgress(subId, percent);
+      if (duration > 0) {
+        if (currentTime > maxWatchedTime) {
+          maxWatchedTime = currentTime;
+        }
+        
+        let percent = Math.min(100, Math.round((maxWatchedTime / duration) * 100));
+        $("simPercentText").textContent = `${percent}% assistido`;
+        
+        if (activeSubjectId) {
+          let currentProg = getProgress()[activeSubjectId] || 0;
+          if (percent > currentProg) {
+            setProgress(activeSubjectId, percent);
+          }
+        }
       }
-    }, 500);
-  }
-</script>
+    }
+  </script>
 </body>
 </html>
