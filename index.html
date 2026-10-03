@@ -83,32 +83,15 @@
     .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
     .action-btn.available { background-color: var(--accent); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2); }
     .action-btn.available:hover { filter: brightness(1.1); }
-    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px; }
-    .edit-btn:hover { color: var(--text-main); }
 
     .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
     .player-section.active { display: block; animation: fadeIn 0.3s ease; }
     .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background-color: #000; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .video-container iframe, .video-container #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(5, 8, 15, 0.85); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
-    .modal { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 16px; width: 90%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-    .modal h2 { margin-bottom: 2px; font-size: 18px; font-weight: 700; }
-    .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 500; }
-    .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-main); font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-    .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
-    .link-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
-
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes modalIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
@@ -129,7 +112,6 @@
           <span class="role-badge" id="userRoleTag">EAD</span>
         </div>
         <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
-        <button class="btn btn-secondary" id="btnAdmin" style="display:none;" onclick="showRegisterModal()">+ Aluno</button>
         <button class="btn btn-danger" onclick="handleLogout()">Sair</button>
       </div>
     </header>
@@ -155,7 +137,6 @@
       <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
         <span>Progresso do Vídeo:</span>
         <span id="simPercentText">0% assistido</span>
-        <input type="hidden" id="simSlider" value="0">
       </div>
     </div>
 
@@ -166,28 +147,24 @@
     <div id="modulesContainer"></div>
   </div>
 
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal" id="modalContent"></div>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // -----------------------------------------------------------------
-    // ESTRUTURA DE MÓDULOS E AULAS (EXEMPLO/MODELO RESTAURADO)
+    // CADASTRO DAS MATÉRIAS E LINKS (ALIMENTE ESTA LISTA COM SEUS LINKS)
     // -----------------------------------------------------------------
     const modulesData = [
       {
         id: "m1",
-        title: "Módulo I - Introdução Teológica",
+        title: "Módulo I - Teologia Básica",
         materias: [
           {
             title: "Bibliologia",
             lessons: [
-              { id: "b1", name: "Aula 1 - Origem e Estrutura da Bíblia", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
-              { id: "b2", name: "Aula 2 - Canonização e Inerrância", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
+              { id: "b1", name: "Aula 1 - Introdução à Bíblia", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+              { id: "b2", name: "Aula 2 - Estrutura e Divisão", playlist: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }
             ]
           }
         ]
@@ -206,11 +183,9 @@
       return lessons;
     };
 
-    // Inicialização do Firebase
     const auth = getAuth();
     const db = getFirestore();
 
-    // Variáveis Globais
     let ytPlayer = null;
     let progressInterval = null;
     let pendingSubjectId = null;
@@ -227,9 +202,7 @@
     };
 
     window.handleLogout = () => {
-      signOut(auth).then(() => {
-        location.reload();
-      });
+      signOut(auth).then(() => location.reload());
     };
 
     function parseYouTubeUrl(url) {
@@ -264,13 +237,10 @@
 
         if (docSnap.exists()) {
           userProgressCache = docSnap.data().lessons || {};
-        } else {
-          userProgressCache = {};
         }
         window.renderModules();
         updateOverallProgressUI();
       } catch (error) {
-        console.error("Erro ao carregar progresso:", error);
         window.renderModules();
         updateOverallProgressUI();
       }
@@ -362,7 +332,7 @@
       });
     };
 
-    // YouTube API Integration
+    // YouTube API
     if (!window.YT) {
       let tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
@@ -392,12 +362,7 @@
 
     window.openSubject = (subId) => {
       let sub = window.getAllLessons().find(s => s.id === subId);
-      if (!sub) return;
-
-      if (!sub.playlist) {
-        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
-        return;
-      }
+      if (!sub || !sub.playlist) return;
 
       if (!window.YT || !window.YT.Player) {
         pendingSubjectId = subId;
@@ -433,16 +398,6 @@
             startProgressTracker(subId);
           },
           'onStateChange': (event) => {
-            if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
-              const videoData = ytPlayer.getVideoData();
-              if (videoData && videoData.video_id !== currentVideoLoadedId) {
-                currentVideoLoadedId = videoData.video_id;
-                if (maxWatchedTime > ytPlayer.getDuration()) {
-                  maxWatchedTime = 0;
-                }
-              }
-            }
-
             if (event.data === YT.PlayerState.PLAYING) {
               startProgressTracker(subId);
             } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
@@ -480,7 +435,6 @@
         }
 
         const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
-        
         if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
 
         const currentProg = window.getProgress()[subId] || 0;
@@ -490,7 +444,7 @@
       }, 500);
     }
 
-    // Renderização inicial
+    // Chamada imediata para desenhar na tela assim que o script abre
     window.renderModules();
   </script>
 </body>
