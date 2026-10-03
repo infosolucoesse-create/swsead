@@ -670,9 +670,10 @@
       $("modulesContainer").innerHTML = html;
     };
 
-    let ytPlayer = null;
+   let ytPlayer = null;
     let progressInterval = null;
     let pendingSubjectId = null;
+    let maxWatchedTime = 0;
 
     if (!window.YT) {
       let tag = document.createElement('script');
@@ -688,99 +689,100 @@
       }
     };
 
+    window.closePlayer = () => {
+      if (progressInterval) clearInterval(progressInterval);
+      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+        ytPlayer.destroy();
+        ytPlayer = null;
+      }
+      $("playerArea").classList.remove("active");
+      $("player").innerHTML = "";
+      activeSubjectId = null;
+      maxWatchedTime = 0;
+    };
+
     window.openSubject = (subId) => {
       let sub = getAllLessons().find(s => s.id === subId);
-      if (!sub || !sub.playlist) return alert("Conteúdo indisponível.");
+      if (!sub) return;
 
-      if (typeof YT === "undefined" || !YT.Player) {
+      if (!sub.playlist) {
+        alert("Nenhum link ou playlist cadastrado para esta aula ainda.");
+        return;
+      }
+
+      if (!window.YT || !window.YT.Player) {
         pendingSubjectId = subId;
+        alert("Carregando o player do YouTube, por favor tente novamente em instantes.");
         return;
       }
 
       activeSubjectId = subId;
-      let parsed = parseYouTubeUrl(sub.playlist);
-
-      $("playerTitle").textContent = `${sub.materiaTitle}: ${sub.name}`;
+      $("playerTitle").textContent = `${sub.materiaTitle} - ${sub.name}`;
       $("playerArea").classList.add("active");
-      $("playerArea").scrollIntoView({ behavior: "smooth" });
+      $("playerArea").scrollIntoView({ behavior: 'smooth' });
+
+      let parsed = parseYouTubeUrl(sub.playlist);
+      let playerConfig = {
+        height: '100%',
+        width: '100%',
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1
+        },
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      };
+
+      if (parsed.playlistId) {
+        playerConfig.playerVars.listType = 'playlist';
+        playerConfig.playerVars.list = parsed.playlistId;
+      } else if (parsed.videoId) {
+        playerConfig.videoId = parsed.videoId;
+      } else {
+        alert("O link do YouTube configurado não é válido.");
+        return;
+      }
 
       if (ytPlayer && typeof ytPlayer.destroy === 'function') {
         ytPlayer.destroy();
       }
 
-      let playerVarsConfig = { autoplay: 1, rel: 0 };
-      if (parsed.playlistId) {
-        playerVarsConfig.listType = 'playlist';
-        playerVarsConfig.list = parsed.playlistId;
-      }
-
-      ytPlayer = new YT.Player('player', {
-        height: '100%',
-        width: '100%',
-        videoId: parsed.videoId || undefined,
-        playerVars: playerVarsConfig,
-        events: { 'onStateChange': onPlayerStateChange }
-      });
-
-      let p = getProgress()[subId] || 0;
-      $("simSlider").value = p;
-      $("simPercentText").textContent = p + "% assistido";
+      ytPlayer = new YT.Player('player', playerConfig);
     };
 
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.PLAYING) {
-        startProgressTracker();
-      } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-        stopProgressTracker();
-        calculateAndUpdateProgress();
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(trackVideoProgress, 1000);
+      } else {
+        if (progressInterval) clearInterval(progressInterval);
       }
     }
 
-    function startProgressTracker() {
-      stopProgressTracker();
-      progressInterval = setInterval(() => {
-        calculateAndUpdateProgress();
-      }, 1000);
-    }
-
-    function stopProgressTracker() {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-      }
-    }
-
-    function calculateAndUpdateProgress() {
-      if (!ytPlayer || !ytPlayer.getDuration || !activeSubjectId) return;
-      let duration = ytPlayer.getDuration();
+    function trackVideoProgress() {
+      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+      
       let currentTime = ytPlayer.getCurrentTime();
+      let duration = ytPlayer.getDuration();
 
       if (duration > 0) {
-        let percent = Math.min(100, Math.round((currentTime / duration) * 100));
-        $("simSlider").value = percent;
-        $("simPercentText").textContent = percent + "% assistido";
+        if (currentTime > maxWatchedTime) {
+          maxWatchedTime = currentTime;
+        }
         
-        let currentSavedVal = getProgress()[activeSubjectId] || 0;
-        if (percent > currentSavedVal) {
-          setProgress(activeSubjectId, percent);
+        let percent = Math.min(100, Math.round((maxWatchedTime / duration) * 100));
+        $("simPercentText").textContent = `${percent}% assistido`;
+        
+        if (activeSubjectId) {
+          let currentProg = getProgress()[activeSubjectId] || 0;
+          if (percent > currentProg) {
+            setProgress(activeSubjectId, percent);
+          }
         }
       }
     }
-
-    window.closePlayer = () => {
-      stopProgressTracker();
-      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-        ytPlayer.destroy();
-      }
-      $("playerArea").classList.remove("active");
-      activeSubjectId = null;
-    };
-
-    window.toggleTheme = () => {
-      let current = document.documentElement.getAttribute("data-theme");
-      let t = current === "light" ? "dark" : "light";
-      document.documentElement.setAttribute("data-theme", t);
-    };
   </script>
 </body>
 </html>
