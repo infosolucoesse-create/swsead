@@ -436,29 +436,32 @@
       html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
     };
 
-    window.showLoginModal = () => {
-      openModal(`
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-  <img src="logo.png" class="brand-logo" alt="Logo Seminário William Seymour">
-  <div>
-    <h2>Seminário William Seymour</h2>
-    <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
-  </div>
-</div>
+window.showLoginModal = () => {
+  openModal(`
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+      <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+      <div>
+        <h2>Seminário William Seymour</h2>
+        <p class="modal-subtitle" style="margin: 0;">Entre com suas credenciais.</p>
+      </div>
+    </div>
 
-<form id="formLogin">
+    <form id="formLogin">
+
 
           <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="u" placeholder="Ex: anderson ou seuemail@exemplo.com" required></div>
           <div class="form-group"><label>Senha</label><input type="password" id="p" placeholder="••••••••" required></div>
-          <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
+              <button class="btn btn-primary" type="submit" style="width:100%; margin-top:5px;">Acessar Plataforma</button>
           <div style="text-align:center;">
             <button type="button" class="link-btn" onclick="showResetModal()">Esqueceu a senha?</button>
           </div>
           <div class="error-msg" id="err">Usuário/E-mail ou senha incorretos.</div>
         </form>
       `, "login");
+
       $("formLogin").addEventListener("submit", handleLogin);
     };
+
 
     window.showResetModal = () => {
       openModal(`
