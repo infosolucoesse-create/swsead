@@ -132,10 +132,11 @@
     }
 
     // Gerenciamento do Player do YouTube
-    let ytPlayer = null;
+   let ytPlayer = null;
     let progressInterval = null;
     let pendingSubjectId = null;
     let maxWatchedTime = 0;
+    let currentVideoLoadedId = null;
 
     if (!window.YT) {
       let tag = document.createElement('script');
@@ -157,10 +158,11 @@
         ytPlayer.destroy();
         ytPlayer = null;
       }
-      $("playerArea").classList.remove("active");
-      $("player").innerHTML = "";
+      if ($("playerArea")) $("playerArea").classList.remove("active");
+      if ($("player")) $("player").innerHTML = "";
       activeSubjectId = null;
       maxWatchedTime = 0;
+      currentVideoLoadedId = null;
     };
 
     window.openSubject = (subId) => {
@@ -174,76 +176,110 @@
 
       if (!window.YT || !window.YT.Player) {
         pendingSubjectId = subId;
-        alert("Carregando o player do YouTube, por favor tente novamente em instantes.");
         return;
       }
 
+      closePlayer();
       activeSubjectId = subId;
-      $("playerTitle").textContent = `${sub.materiaTitle} - ${sub.name}`;
-      $("playerArea").classList.add("active");
-      $("playerArea").scrollIntoView({ behavior: 'smooth' });
+      if ($("playerArea")) $("playerArea").classList.add("active");
+      if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle} - ${sub.name}`;
 
-      let parsed = parseYouTubeUrl(sub.playlist);
-      let playerConfig = {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          autoplay: 1,
-          rel: 0,
-          modestbranding: 1
-        },
-        events: {
-          'onStateChange': onPlayerStateChange
-        }
+      const { videoId, playlistId } = parseYouTubeUrl(sub.playlist);
+      
+      const prog = getProgress();
+      const currentSavedPercent = prog[subId] || 0;
+
+      let playerVars = {
+        autoplay: 1,
+        rel: 0,
+        modestbranding: 1
       };
 
-      if (parsed.playlistId) {
-        playerConfig.playerVars.listType = 'playlist';
-        playerConfig.playerVars.list = parsed.playlistId;
-      } else if (parsed.videoId) {
-        playerConfig.videoId = parsed.videoId;
-      } else {
-        alert("O link do YouTube configurado não é válido.");
-        return;
+      if (playlistId) {
+        playerVars.listType = 'playlist';
+        playerVars.list = playlistId;
       }
 
-      if (ytPlayer && typeof ytPlayer.destroy === 'function') {
-        ytPlayer.destroy();
-      }
+      ytPlayer = new YT.Player('player', {
+        videoId: videoId || undefined,
+        playerVars: playerVars,
+        events: {
+          'onReady': (event) => {
+            const duration = ytPlayer.getDuration();
+            if (duration > 0 && currentSavedPercent > 0) {
+              maxWatchedTime = (currentSavedPercent / 100) * duration;
+              ytPlayer.seekTo(maxWatchedTime, true);
+            } else {
+              maxWatchedTime = 0;
+            }
+            
+            startProgressTracker(subId);
+          },
+          'onStateChange': (event) => {
+            if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
+              const videoData = ytPlayer.getVideoData();
+              if (videoData && videoData.video_id !== currentVideoLoadedId) {
+                currentVideoLoadedId = videoData.video_id;
+                if (maxWatchedTime > ytPlayer.getDuration()) {
+                  maxWatchedTime = 0;
+                }
+              }
+            }
 
-      ytPlayer = new YT.Player('player', playerConfig);
+            if (event.data === YT.PlayerState.PLAYING) {
+              startProgressTracker(subId);
+            } else if (event.data === YT.PlayerState.PAUSED) {
+              if (progressInterval) clearInterval(progressInterval);
+            } else if (event.data === YT.PlayerState.ENDED) {
+              if (progressInterval) clearInterval(progressInterval);
+              if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
+              if ($("simSlider")) $("simSlider").value = 100;
+              setProgress(subId, 100);
+            }
+          }
+        }
+      });
+
+      if ($("playerArea")) $("playerArea").scrollIntoView({ behavior: 'smooth' });
     };
 
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        if (progressInterval) clearInterval(progressInterval);
-        progressInterval = setInterval(trackVideoProgress, 1000);
-      } else {
-        if (progressInterval) clearInterval(progressInterval);
-      }
-    }
+    function startProgressTracker(subId) {
+      if (progressInterval) clearInterval(progressInterval);
 
-    function trackVideoProgress() {
-      if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-      
-      let currentTime = ytPlayer.getCurrentTime();
-      let duration = ytPlayer.getDuration();
+      progressInterval = setInterval(() => {
+        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
 
-      if (duration > 0) {
+        const currentTime = ytPlayer.getCurrentTime();
+        const duration = ytPlayer.getDuration();
+
+        if (!duration || duration === 0) return;
+
+        const currentSavedPercent = getProgress()[subId] || 0;
+        if (maxWatchedTime === 0 && currentSavedPercent > 0) {
+          maxWatchedTime = (currentSavedPercent / 100) * duration;
+          ytPlayer.seekTo(maxWatchedTime, true);
+        }
+
+        // TRAVA DE AVANÇO: Se avançar mais de 1.5s além do máximo assistido
+        if (currentTime > maxWatchedTime + 1.5) {
+          ytPlayer.seekTo(maxWatchedTime, true);
+          return;
+        }
+
         if (currentTime > maxWatchedTime) {
           maxWatchedTime = currentTime;
         }
+
+        const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
         
-        let percent = Math.min(100, Math.round((maxWatchedTime / duration) * 100));
-        $("simPercentText").textContent = `${percent}% assistido`;
-        
-        if (activeSubjectId) {
-          let currentProg = getProgress()[activeSubjectId] || 0;
-          if (percent > currentProg) {
-            setProgress(activeSubjectId, percent);
-          }
+        if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
+        if ($("simSlider")) $("simSlider").value = percent;
+
+        const currentProg = getProgress()[subId] || 0;
+        if (percent > currentProg) {
+          setProgress(subId, percent);
         }
-      }
+      }, 500);
     }
   </script>
 </body>
