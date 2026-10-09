@@ -416,7 +416,7 @@
       return list;
     }
 
-    // Valida se 100% de todas as aulas de um módulo foram concluídas
+    // Valida se 100% das aulas de um módulo foram concluídas
     function isModuleCompleted(mObj) {
       const prog = getProgress();
       let moduleLessons = [];
@@ -428,6 +428,21 @@
       if (!moduleLessons.length) return false;
       return moduleLessons.every(l => (prog[l.id] || 0) >= 100);
     }
+
+    window.abrirProvaAluno = (modId) => {
+      let mod = courseData.find(m => m.id === modId);
+      if (!mod || !mod.provaUrl) {
+        alert("Nenhuma prova cadastrada para este módulo ainda.");
+        return;
+      }
+
+      let concluiu = isModuleCompleted(mod);
+      if (concluiu) {
+        window.open(mod.provaUrl, "_blank");
+      } else {
+        alert(`🔒 Prova Bloqueada!\n\nVocê precisa assistir a 100% de todas as aulas do ${mod.name} para liberar o formulário de avaliação.`);
+      }
+    };
 
     async function saveCourseData() {
       try {
@@ -921,25 +936,16 @@
 
         if (search && !moduleHasMatches) return;
 
-        // Área de Exibição da Prova
+        // Botão de Prova no Cabeçalho do Módulo
         let isCompleted = isModuleCompleted(m);
-        let provaHtml = "";
+        let provaBtnHtml = "";
 
-        if (m.provaUrl) {
-          if (isCompleted) {
-            provaHtml = `
-              <div style="margin-top: 20px; padding: 16px; background: rgba(200, 161, 74, 0.12); border: 1px solid var(--accent); border-radius: 10px; text-align: center;">
-                <p style="font-weight: 700; margin-bottom: 8px; font-size: 14px;">🎉 Parabéns! Você concluiu 100% das aulas deste módulo.</p>
-                <a href="${m.provaUrl}" target="_blank" class="btn btn-primary" style="text-decoration: none; padding: 10px 20px;">📝 Realizar Prova do ${m.name}</a>
-              </div>
-            `;
-          } else {
-            provaHtml = `
-              <div style="margin-top: 20px; padding: 14px; background: var(--bg-color); border: 1px dashed var(--border-color); border-radius: 10px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                🔒 <strong>Prova Bloqueada:</strong> Assista a 100% de todas as aulas do ${m.name} para liberar o formulário de avaliação.
-              </div>
-            `;
-          }
+        if (isAdmin) {
+          provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap; margin-left:10px;" onclick="showProvaModal(${m.id})">⚙️ Prova</button>`;
+        } else {
+          let btnClasse = m.provaUrl ? (isCompleted ? 'available' : '') : '';
+          let btnTexto = m.provaUrl ? (isCompleted ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
+          provaBtnHtml = `<button class="action-btn ${btnClasse}" style="white-space:nowrap; margin-left:10px;" onclick="abrirProvaAluno(${m.id})">${btnTexto}</button>`;
         }
 
         html += `
@@ -948,11 +954,10 @@
               <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
                 <span>📌 ${m.name}</span><span>▼</span>
               </button>
-              ${isAdmin ? `<button class="edit-btn" style="white-space:nowrap; margin-left:10px;" onclick="showProvaModal(${m.id})">📝 Prova</button>` : ''}
+              ${provaBtnHtml}
             </div>
             <div class="module-content">
               ${materiasHtml}
-              ${provaHtml}
             </div>
           </div>
         `;
