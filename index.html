@@ -83,6 +83,7 @@
 
     /* Módulo e Matérias */
     .module { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); transition: border-color 0.2s; }
+    .module-header-wrap { display: flex; justify-content: space-between; align-items: center; padding-right: 15px; }
     .module-toggle { width: 100%; text-align: left; padding: 18px 20px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .module-toggle:hover { background-color: var(--card-hover); }
 
@@ -101,8 +102,8 @@
     .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
     .action-btn.available { background-color: var(--accent); color: var(--on-accent); }
     .action-btn.available:hover { filter: brightness(1.1); }
-    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px; }
-    .edit-btn:hover { color: var(--text-main); }
+    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+    .edit-btn:hover { color: var(--text-main); background: var(--border-color); }
 
     .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
     .player-section.active { display: block; animation: fadeIn 0.3s ease; }
@@ -120,7 +121,6 @@
     .modal-overlay.login { background: transparent; backdrop-filter: none; }
     html.embedded.logged-out, html.embedded body.logged-out { background: transparent; }
     
-    /* Painel do Administrador */
     .modal-overlay.wide .modal { max-width: 860px; max-height: 88vh; overflow-y: auto; }
     .adm-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .adm-wrap { overflow-x: auto; margin-top: 12px; }
@@ -240,6 +240,7 @@
       {
         id: 1,
         name: "Módulo I",
+        provaUrl: null,
         materias: [
           {
             id: "mat_teo",
@@ -280,6 +281,7 @@
       {
         id: 2,
         name: "Módulo II",
+        provaUrl: null,
         materias: [
           {
             id: "mat_m2_1", title: "Introdução Bíblica",
@@ -302,6 +304,7 @@
       {
         id: 3,
         name: "Módulo III",
+        provaUrl: null,
         materias: [
           {
             id: "mat_m3_1", title: "Geografia Bíblica",
@@ -324,6 +327,7 @@
       {
         id: 4,
         name: "Módulo IV",
+        provaUrl: null,
         materias: [
           {
             id: "mat_m4_1", title: "Hermenêutica",
@@ -346,6 +350,7 @@
       {
         id: 5,
         name: "Módulo V",
+        provaUrl: null,
         materias: [
           { id: "mat_m5_1", title: "Antropologia", lessons: [{ id: "m5_1", name: "Aulas da Disciplina", playlist: null }] },
           { id: "mat_m5_2", title: "Hamartiologia", lessons: [{ id: "m5_2", name: "Aulas da Disciplina", playlist: null }] },
@@ -356,6 +361,7 @@
       {
         id: 6,
         name: "Módulo VI",
+        provaUrl: null,
         materias: [
           { id: "mat_m6_1", title: "Escatologia", lessons: [{ id: "m6_1", name: "Aulas da Disciplina", playlist: null }] },
           { id: "mat_m6_2", title: "Soteriologia", lessons: [{ id: "m6_2", name: "Aulas da Disciplina", playlist: null }] },
@@ -408,6 +414,19 @@
         }
       });
       return list;
+    }
+
+    // Valida se 100% de todas as aulas de um módulo foram concluídas
+    function isModuleCompleted(mObj) {
+      const prog = getProgress();
+      let moduleLessons = [];
+      mObj.materias?.forEach(mat => {
+        mat.lessons?.forEach(l => {
+          moduleLessons.push(l);
+        });
+      });
+      if (!moduleLessons.length) return false;
+      return moduleLessons.every(l => (prog[l.id] || 0) >= 100);
     }
 
     async function saveCourseData() {
@@ -554,6 +573,29 @@
       $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
     };
 
+    window.showProvaModal = (modId) => {
+      let mod = courseData.find(m => m.id === modId);
+      openModal(`
+        <h2>Editar Prova do Módulo</h2>
+        <p class="modal-subtitle">${mod ? mod.name : ''}</p>
+        <form id="formProva">
+          <div class="form-group">
+            <label>Link do Formulário da Prova (Google Forms)</label>
+            <input type="url" id="pLink" value="${mod?.provaUrl || ''}" placeholder="https://forms.gle/..." required>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit">💾 Salvar Prova</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-danger" type="button" id="btnDeleteProva" style="flex:1;">🗑 Remover Prova</button>
+              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+        </form>
+      `);
+      $("formProva").addEventListener("submit", (e) => handleSaveProva(e, modId));
+      $("btnDeleteProva").addEventListener("click", () => handleDeleteProva(modId));
+    };
+
     function resolveEmail(input) {
       let trimmed = input.trim().toLowerCase();
       if (trimmed.includes('@')) {
@@ -642,6 +684,27 @@
       if (activeSubjectId === subId) closePlayer();
     }
 
+    async function handleSaveProva(e, modId) {
+      e.preventDefault();
+      let val = $("pLink").value.trim();
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.provaUrl = val || null;
+      }
+      await saveCourseData();
+      closeModal();
+    }
+
+    async function handleDeleteProva(modId) {
+      if (!confirm("Remover o link da prova deste módulo?")) return;
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.provaUrl = null;
+      }
+      await saveCourseData();
+      closeModal();
+    }
+
     // ===== PROGRESSO NA NUVEM (Firestore: progresso/{uid}) =====
     let progressCache = {};
     let progressDirty = false;
@@ -665,14 +728,12 @@
         console.error("Erro ao carregar progresso:", err);
       }
 
-      // Mantém sempre o maior valor entre nuvem e local
       const merged = { ...cloud };
       for (const [id, v] of Object.entries(local)) {
         merged[id] = Math.max(merged[id] || 0, v);
       }
       progressCache = merged;
 
-      // Grava no login: envia o progresso e vincula o e-mail do aluno
       if (cloudOk) {
         progressDirty = true;
         await flushProgress();
@@ -860,12 +921,39 @@
 
         if (search && !moduleHasMatches) return;
 
+        // Área de Exibição da Prova
+        let isCompleted = isModuleCompleted(m);
+        let provaHtml = "";
+
+        if (m.provaUrl) {
+          if (isCompleted) {
+            provaHtml = `
+              <div style="margin-top: 20px; padding: 16px; background: rgba(200, 161, 74, 0.12); border: 1px solid var(--accent); border-radius: 10px; text-align: center;">
+                <p style="font-weight: 700; margin-bottom: 8px; font-size: 14px;">🎉 Parabéns! Você concluiu 100% das aulas deste módulo.</p>
+                <a href="${m.provaUrl}" target="_blank" class="btn btn-primary" style="text-decoration: none; padding: 10px 20px;">📝 Realizar Prova do ${m.name}</a>
+              </div>
+            `;
+          } else {
+            provaHtml = `
+              <div style="margin-top: 20px; padding: 14px; background: var(--bg-color); border: 1px dashed var(--border-color); border-radius: 10px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                🔒 <strong>Prova Bloqueada:</strong> Assista a 100% de todas as aulas do ${m.name} para liberar o formulário de avaliação.
+              </div>
+            `;
+          }
+        }
+
         html += `
           <div class="module ${search ? 'open' : ''}" id="mod-${m.id}">
-            <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
-              <span>📌 ${m.name}</span><span>▼</span>
-            </button>
-            <div class="module-content">${materiasHtml}</div>
+            <div class="module-header-wrap">
+              <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
+                <span>📌 ${m.name}</span><span>▼</span>
+              </button>
+              ${isAdmin ? `<button class="edit-btn" style="white-space:nowrap; margin-left:10px;" onclick="showProvaModal(${m.id})">📝 Prova</button>` : ''}
+            </div>
+            <div class="module-content">
+              ${materiasHtml}
+              ${provaHtml}
+            </div>
           </div>
         `;
       });
