@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seminário William Seymour - EAD</title>
   <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1f4555">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SWS EAD">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js');
-    });
-  }
-</script>
+  <meta name="theme-color" content="#1f4555">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SWS EAD">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
   <style>
     :root {
       --bg-color: #17110e;
@@ -119,6 +119,20 @@
     .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
     .modal-overlay.login { background: transparent; backdrop-filter: none; }
     html.embedded.logged-out, html.embedded body.logged-out { background: transparent; }
+    
+    /* Painel do Administrador */
+    .modal-overlay.wide .modal { max-width: 860px; max-height: 88vh; overflow-y: auto; }
+    .adm-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .adm-wrap { overflow-x: auto; margin-top: 12px; }
+    .adm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .adm-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+    .adm-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    .adm-row { cursor: pointer; }
+    .adm-row:hover { background-color: var(--card-hover); }
+    .adm-bar { background-color: var(--border-color); height: 6px; border-radius: 4px; overflow: hidden; min-width: 70px; margin-top: 4px; }
+    .adm-bar > div { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .adm-detail { font-size: 12px; color: var(--text-muted); line-height: 1.7; background-color: var(--bg-color); }
+    
     .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; display: none; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); }
     .link-btn { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block; }
 
@@ -149,6 +163,7 @@
           <span class="role-badge" id="userRoleTag">...</span>
         </div>
         <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
+        <button class="btn btn-secondary" id="btnProgressoAlunos" style="display:none;" onclick="showAdminProgress()">📊 Alunos</button>
         <button class="btn btn-secondary" id="btnAdmin" style="display:none;" onclick="showRegisterModal()">+ Aluno</button>
         <button class="btn btn-danger" onclick="handleLogout()">Sair</button>
       </div>
@@ -204,7 +219,9 @@
       getFirestore,   
       doc,   
       getDoc,   
-      setDoc   
+      setDoc,
+      collection,
+      getDocs
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -591,8 +608,9 @@
       
       $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
+      $("btnProgressoAlunos").style.display = isAdmin ? "inline-block" : "none";
       await loadProgressFromCloud();
-      await loadCourseDataFromCloud();   // já chama renderModules()
+      await loadCourseDataFromCloud();
       updateOverallProgress();
     }
 
@@ -647,15 +665,15 @@
         console.error("Erro ao carregar progresso:", err);
       }
 
-      // Mantém sempre o maior valor entre nuvem e local (aproveita o progresso antigo)
+      // Mantém sempre o maior valor entre nuvem e local
       const merged = { ...cloud };
       for (const [id, v] of Object.entries(local)) {
         merged[id] = Math.max(merged[id] || 0, v);
       }
       progressCache = merged;
 
-      // Se o local tinha algo a mais, sobe para a nuvem
-      if (cloudOk && JSON.stringify(merged) !== JSON.stringify(cloud)) {
+      // Grava no login: envia o progresso e vincula o e-mail do aluno
+      if (cloudOk) {
         progressDirty = true;
         await flushProgress();
       }
@@ -667,7 +685,7 @@
       if (!progressDirty || !auth.currentUser) return;
       progressDirty = false;
       try {
-        await setDoc(progressRef(), { aulas: progressCache, atualizadoEm: Date.now() }, { merge: true });
+        await setDoc(progressRef(), { aulas: progressCache, email: currentUser, atualizadoEm: Date.now() }, { merge: true });
       } catch (err) {
         progressDirty = true;
         console.error("Erro ao salvar progresso:", err);
@@ -678,9 +696,9 @@
       const v = parseInt(val, 10);
       if ((progressCache[subId] || 0) >= v) return;
       progressCache[subId] = v;
-      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progressCache)); // backup offline
+      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progressCache));
       progressDirty = true;
-      if (!progressTimer) progressTimer = setTimeout(flushProgress, 5000); // grava no máx. a cada 5s
+      if (!progressTimer) progressTimer = setTimeout(flushProgress, 5000);
       updateOverallProgress();
       renderModules();
     }
@@ -697,6 +715,99 @@
       let total = Math.round(sum / subs.length) || 0;
       $("overallBar").style.width = total + "%";
       $("overallPercent").textContent = total + "%";
+    }
+
+    // ===== PAINEL DO ADMINISTRADOR: progresso dos alunos =====
+    const esc = (t) => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function nomeDoEmail(email) {
+      if (!email) return "(sem e-mail ainda)";
+      const m = email.match(/^infosolucoesse\+(.+)@gmail\.com$/i);
+      if (!m) return email;
+      return m[1].charAt(0).toUpperCase() + m[1].slice(1);
+    }
+
+    let adminRows = [];
+
+    window.showAdminProgress = async () => {
+      openModal(`<h2>Progresso dos alunos</h2><p class="modal-subtitle" id="admStatus">Carregando...</p>`, "wide");
+      try {
+        const snap = await getDocs(collection(db, "progresso"));
+        const lessons = getAllLessons();
+        adminRows = snap.docs.map(d => {
+          const data = d.data(), aulas = data.aulas || {};
+          const sum = lessons.reduce((a, l) => a + (aulas[l.id] || 0), 0);
+          return {
+            uid: d.id,
+            email: data.email || "",
+            nome: nomeDoEmail(data.email),
+            geral: lessons.length ? Math.round(sum / lessons.length) : 0,
+            concluidas: lessons.filter(l => (aulas[l.id] || 0) >= 100).length,
+            andamento: lessons.filter(l => { const v = aulas[l.id] || 0; return v > 0 && v < 100; }).length,
+            ultimo: data.atualizadoEm || 0,
+            aulas
+          };
+        }).sort((a, b) => b.geral - a.geral || a.nome.localeCompare(b.nome));
+        renderAdminShell();
+      } catch (err) {
+        console.error("Erro ao carregar progresso dos alunos:", err);
+        $("admStatus").textContent = "Não foi possível carregar. Confira se as regras do Firestore foram atualizadas.";
+      }
+    };
+
+    function renderAdminShell() {
+      $("modalContent").innerHTML = `
+        <div class="adm-top">
+          <div>
+            <h2>Progresso dos alunos</h2>
+            <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.length} aluno(s) registrado(s). Clique em um aluno para ver as aulas.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+        </div>
+        <input type="text" class="search-bar" style="width:100%; margin-top:14px;" placeholder="Buscar aluno..." oninput="filtrarAdmin(this.value)">
+        <div class="adm-wrap">
+          <table class="adm-table">
+            <thead><tr><th>Aluno</th><th>Progresso geral</th><th>Concluídas</th><th>Em andamento</th><th>Última atividade</th></tr></thead>
+            <tbody id="admBody"></tbody>
+          </table>
+        </div>
+        <p class="modal-subtitle" style="margin:12px 0 0;">O percentual usa o mesmo cálculo do aluno: média de todas as aulas do curso, inclusive as ainda sem vídeo.</p>
+      `;
+      renderAdminRows("");
+    }
+
+    window.filtrarAdmin = (q) => renderAdminRows(q);
+
+    window.toggleAdminDetail = (uid) => {
+      const el = document.getElementById("det-" + uid);
+      if (el) el.style.display = el.style.display === "none" ? "table-row" : "none";
+    };
+
+    function renderAdminRows(q) {
+      const term = (q || "").toLowerCase().trim();
+      const rows = adminRows.filter(r => !term || r.nome.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+      if (!rows.length) {
+        $("admBody").innerHTML = `<tr><td colspan="5" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>`;
+        return;
+      }
+      $("admBody").innerHTML = rows.map(r => {
+        let detalhe = "";
+        courseData.forEach(m => m.materias?.forEach(mat => mat.lessons?.forEach(l => {
+          const v = r.aulas[l.id] || 0;
+          if (v > 0) detalhe += `${esc(mat.title)} — ${esc(l.name)}: <strong>${v}%</strong><br>`;
+        })));
+        if (!detalhe) detalhe = "Nenhuma aula iniciada.";
+        const quando = r.ultimo ? new Date(r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
+        return `
+          <tr class="adm-row" onclick="toggleAdminDetail('${esc(r.uid)}')">
+            <td><strong>${esc(r.nome)}</strong>${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}</td>
+            <td><strong>${r.geral}%</strong><div class="adm-bar"><div style="width:${r.geral}%"></div></div></td>
+            <td>${r.concluidas}</td>
+            <td>${r.andamento}</td>
+            <td>${quando}</td>
+          </tr>
+          <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="5" class="adm-detail">${detalhe}</td></tr>`;
+      }).join("");
     }
 
     window.renderModules = () => {
@@ -761,7 +872,7 @@
       $("modulesContainer").innerHTML = html;
     };
 
-  let ytPlayer = null;
+    let ytPlayer = null;
     let progressInterval = null;
     let pendingSubjectId = null;
     let maxWatchedTime = 0;
