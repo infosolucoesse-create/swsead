@@ -83,9 +83,11 @@
 
     /* Módulo e Matérias */
     .module { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); transition: border-color 0.2s; }
-    .module-header-wrap { display: flex; justify-content: space-between; align-items: center; padding-right: 15px; }
-    .module-toggle { width: 100%; text-align: left; padding: 18px 20px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .module-header-wrap { display: flex; justify-content: space-between; align-items: center; padding-right: 15px; flex-wrap: wrap; gap: 6px; }
+    .module-toggle { flex: 1; text-align: left; padding: 18px 20px; background: none; border: none; color: var(--text-main); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .module-toggle:hover { background-color: var(--card-hover); }
+
+    .module-actions { display: flex; align-items: center; gap: 6px; }
 
     .module-content { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border-color); }
     .module.open .module-content { display: block; }
@@ -102,8 +104,8 @@
     .action-btn { padding: 5px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background-color: var(--border-color); color: var(--text-muted); font-weight: 600; transition: background-color 0.2s; }
     .action-btn.available { background-color: var(--accent); color: var(--on-accent); }
     .action-btn.available:hover { filter: brightness(1.1); }
-    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
-    .edit-btn:hover { color: var(--text-main); background: var(--border-color); }
+    .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
+    .edit-btn:hover { color: var(--text-main); background: var(--card-hover); }
 
     .player-section { display: none; margin-bottom: 25px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
     .player-section.active { display: block; animation: fadeIn 0.3s ease; }
@@ -241,6 +243,7 @@
         id: 1,
         name: "Módulo I",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           {
             id: "mat_teo",
@@ -282,6 +285,7 @@
         id: 2,
         name: "Módulo II",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           {
             id: "mat_m2_1", title: "Introdução Bíblica",
@@ -305,6 +309,7 @@
         id: 3,
         name: "Módulo III",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           {
             id: "mat_m3_1", title: "Geografia Bíblica",
@@ -328,6 +333,7 @@
         id: 4,
         name: "Módulo IV",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           {
             id: "mat_m4_1", title: "Hermenêutica",
@@ -351,6 +357,7 @@
         id: 5,
         name: "Módulo V",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           { id: "mat_m5_1", title: "Antropologia", lessons: [{ id: "m5_1", name: "Aulas da Disciplina", playlist: null }] },
           { id: "mat_m5_2", title: "Hamartiologia", lessons: [{ id: "m5_2", name: "Aulas da Disciplina", playlist: null }] },
@@ -362,6 +369,7 @@
         id: 6,
         name: "Módulo VI",
         provaUrl: null,
+        livroUrl: null,
         materias: [
           { id: "mat_m6_1", title: "Escatologia", lessons: [{ id: "m6_1", name: "Aulas da Disciplina", playlist: null }] },
           { id: "mat_m6_2", title: "Soteriologia", lessons: [{ id: "m6_2", name: "Aulas da Disciplina", playlist: null }] },
@@ -416,7 +424,6 @@
       return list;
     }
 
-    // Valida se 100% das aulas de um módulo foram concluídas
     function isModuleCompleted(mObj) {
       const prog = getProgress();
       let moduleLessons = [];
@@ -428,6 +435,15 @@
       if (!moduleLessons.length) return false;
       return moduleLessons.every(l => (prog[l.id] || 0) >= 100);
     }
+
+    window.abrirLivroAluno = (modId) => {
+      let mod = courseData.find(m => m.id === modId);
+      if (!mod || !mod.livroUrl) {
+        alert("O PDF do livro para este módulo ainda não está disponível.");
+        return;
+      }
+      window.open(mod.livroUrl, "_blank");
+    };
 
     window.abrirProvaAluno = (modId) => {
       let mod = courseData.find(m => m.id === modId);
@@ -588,6 +604,29 @@
       $("btnDeleteLink").addEventListener("click", () => handleDeleteLink(subId));
     };
 
+    window.showLivroModal = (modId) => {
+      let mod = courseData.find(m => m.id === modId);
+      openModal(`
+        <h2>Editar Livro / Apostila (PDF)</h2>
+        <p class="modal-subtitle">${mod ? mod.name : ''}</p>
+        <form id="formLivro">
+          <div class="form-group">
+            <label>Link do PDF do Livro (Google Drive, Dropbox, etc.)</label>
+            <input type="url" id="lLink" value="${mod?.livroUrl || ''}" placeholder="https://drive.google.com/file/d/..." required>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit">💾 Salvar Livro</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-danger" type="button" id="btnDeleteLivro" style="flex:1;">🗑 Remover Livro</button>
+              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+        </form>
+      `);
+      $("formLivro").addEventListener("submit", (e) => handleSaveLivro(e, modId));
+      $("btnDeleteLivro").addEventListener("click", () => handleDeleteLivro(modId));
+    };
+
     window.showProvaModal = (modId) => {
       let mod = courseData.find(m => m.id === modId);
       openModal(`
@@ -697,6 +736,27 @@
       await saveCourseData(); 
       closeModal();
       if (activeSubjectId === subId) closePlayer();
+    }
+
+    async function handleSaveLivro(e, modId) {
+      e.preventDefault();
+      let val = $("lLink").value.trim();
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.livroUrl = val || null;
+      }
+      await saveCourseData();
+      closeModal();
+    }
+
+    async function handleDeleteLivro(modId) {
+      if (!confirm("Remover o link do livro deste módulo?")) return;
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.livroUrl = null;
+      }
+      await saveCourseData();
+      closeModal();
     }
 
     async function handleSaveProva(e, modId) {
@@ -936,16 +996,21 @@
 
         if (search && !moduleHasMatches) return;
 
-        // Botão de Prova no Cabeçalho do Módulo
+        // Botões de Livro e Prova no Cabeçalho do Módulo
         let isCompleted = isModuleCompleted(m);
+        let livroBtnHtml = "";
         let provaBtnHtml = "";
 
         if (isAdmin) {
-          provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap; margin-left:10px;" onclick="showProvaModal(${m.id})">⚙️ Prova</button>`;
+          livroBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showLivroModal(${m.id})">⚙️ Livro</button>`;
+          provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal(${m.id})">⚙️ Prova</button>`;
         } else {
+          let livroClasse = m.livroUrl ? 'available' : '';
+          livroBtnHtml = `<button class="action-btn ${livroClasse}" style="white-space:nowrap;" onclick="abrirLivroAluno(${m.id})">📚 Livro</button>`;
+
           let btnClasse = m.provaUrl ? (isCompleted ? 'available' : '') : '';
           let btnTexto = m.provaUrl ? (isCompleted ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
-          provaBtnHtml = `<button class="action-btn ${btnClasse}" style="white-space:nowrap; margin-left:10px;" onclick="abrirProvaAluno(${m.id})">${btnTexto}</button>`;
+          provaBtnHtml = `<button class="action-btn ${btnClasse}" style="white-space:nowrap;" onclick="abrirProvaAluno(${m.id})">${btnTexto}</button>`;
         }
 
         html += `
@@ -954,7 +1019,10 @@
               <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
                 <span>📌 ${m.name}</span><span>▼</span>
               </button>
-              ${provaBtnHtml}
+              <div class="module-actions">
+                ${livroBtnHtml}
+                ${provaBtnHtml}
+              </div>
             </div>
             <div class="module-content">
               ${materiasHtml}
