@@ -262,21 +262,39 @@
             id: "mat_cristo",
             title: "Cristologia",
             lessons: [
-              { id: "m1_cristo_1", name: "Capítulo 1: A Pessoa de Cristo", playlist: null }
+              { id: "m1_cristo_intro", name: "Introdução", playlist: null },
+              { id: "m1_cristo_cap1", name: "Capítulo 1: O Cristo", playlist: null },
+              { id: "m1_cristo_cap2", name: "Capítulo 2: Heresias sobre Jesus", playlist: null },
+              { id: "m1_cristo_cap3", name: "Capítulo 3: A humanidade e divindade de Jesus", playlist: null },
+              { id: "m1_cristo_cap4", name: "Capítulo 4: Ofícios e ministério de Jesus", playlist: null },
+              { id: "m1_cristo_cap5", name: "Capítulo 5: A humilhação e ressurreição de Jesus", playlist: null },
+              { id: "m1_cristo_conc", name: "Conclusão", playlist: null }
             ]
           },
           {
             id: "mat_pneumat",
             title: "Pneumatologia",
             lessons: [
-              { id: "m1_pneumat_1", name: "Capítulo 1: O Espírito Santo", playlist: null }
+              { id: "m1_pneumat_intro", name: "Introdução", playlist: null },
+              { id: "m1_pneumat_cap1", name: "Capítulo 1: O Espírito Santo", playlist: null },
+              { id: "m1_pneumat_cap2", name: "Capítulo 2: A obra do Espírito Santo no AT e NT", playlist: null },
+              { id: "m1_pneumat_cap3", name: "Capítulo 3: A blasfêmia contra o Espírito Santo", playlist: null },
+              { id: "m1_pneumat_cap4", name: "Capítulo 4: O Batismo no Espírito Santo", playlist: null },
+              { id: "m1_pneumat_cap5", name: "Capítulo 5: Os dons e o fruto do Espírito Santo", playlist: null },
+              { id: "m1_pneumat_conc", name: "Conclusão", playlist: null }
             ]
           },
           {
             id: "mat_etica",
             title: "Ética Cristã",
             lessons: [
-              { id: "m1_etica_1", name: "Capítulo 1: Fundamentos da Ética", playlist: null }
+              { id: "m1_etica_intro", name: "Introdução", playlist: null },
+              { id: "m1_etica_cap1", name: "Capítulo 1: Panorama da Ética Cristã", playlist: null },
+              { id: "m1_etica_cap2", name: "Capítulo 2: A Ideologia de gênero e a homossexualidade", playlist: null },
+              { id: "m1_etica_cap3", name: "Capítulo 3: A morte e a vida", playlist: null },
+              { id: "m1_etica_cap4", name: "Capítulo 4: Dinheiro e o entretenimento sob a ética cristã", playlist: null },
+              { id: "m1_etica_cap5", name: "Capítulo 5: A Política e a internet", playlist: null },
+              { id: "m1_etica_conc", name: "Conclusão", playlist: null }
             ]
           }
         ]
@@ -469,12 +487,42 @@
       }
     }
 
+    // Aulas provisórias antigas (uma só por matéria), trocadas pelas aulas novas quando não têm link
+    const AULAS_PROVISORIAS = ["m1_cristo_1", "m1_pneumat_1", "m1_etica_1"];
+
+    // Completa o curso salvo na nuvem com módulos, matérias e aulas novas do código,
+    // sem apagar nenhum link nem prova já cadastrados.
+    function mergeCourseData(saved, initial) {
+      const out = JSON.parse(JSON.stringify(saved));
+      initial.forEach(im => {
+        const sm = out.find(m => m.id === im.id);
+        if (!sm) { out.push(JSON.parse(JSON.stringify(im))); return; }
+        sm.materias = sm.materias || [];
+        im.materias.forEach(imat => {
+          const smat = sm.materias.find(x => x.id === imat.id);
+          if (!smat) { sm.materias.push(JSON.parse(JSON.stringify(imat))); return; }
+          const atuais = (smat.lessons || []).filter(l => !(AULAS_PROVISORIAS.includes(l.id) && !l.playlist));
+          const ordenadas = imat.lessons.map(il => atuais.find(l => l.id === il.id) || JSON.parse(JSON.stringify(il)));
+          const extras = atuais.filter(l => !imat.lessons.some(il => il.id === l.id));
+          smat.lessons = [...ordenadas, ...extras];
+        });
+      });
+      return out;
+    }
+
     async function loadCourseDataFromCloud() {
       try {
         const docRef = doc(db, "cursos", "geral_v3");
         const docSnap = await getDoc(docRef);
         if (docSnap.exists() && docSnap.data().modules) {
-          courseData = docSnap.data().modules;
+          const salvo = docSnap.data().modules;
+          courseData = mergeCourseData(salvo, initialCourseData);
+          // O administrador grava o curso já completo; os alunos apenas veem a versão mesclada
+          const em = (currentUser || "").toLowerCase();
+          const souAdmin = em === "infosolucoesse@gmail.com" || em.startsWith("infosolucoesse+anderson@");
+          if (souAdmin && JSON.stringify(courseData) !== JSON.stringify(salvo)) {
+            await setDoc(docRef, { modules: courseData });
+          }
         } else {
           await setDoc(docRef, { modules: initialCourseData });
         }
