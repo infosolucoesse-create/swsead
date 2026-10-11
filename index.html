@@ -487,8 +487,8 @@
       }
     }
 
-    // Aulas provisórias antigas (uma só por matéria), trocadas pelas aulas novas quando não têm link
-    const AULAS_PROVISORIAS = ["m1_cristo_1", "m1_pneumat_1", "m1_etica_1"];
+    // Aulas provisórias antigas (uma só por matéria): são removidas; se tinham link, ele passa para o Capítulo 1 correspondente
+    const AULA_PROVISORIA_PARA = { m1_cristo_1: "m1_cristo_cap1", m1_pneumat_1: "m1_pneumat_cap1", m1_etica_1: "m1_etica_cap1" };
 
     // Completa o curso salvo na nuvem com módulos, matérias e aulas novas do código,
     // sem apagar nenhum link nem prova já cadastrados.
@@ -501,8 +501,13 @@
         im.materias.forEach(imat => {
           const smat = sm.materias.find(x => x.id === imat.id);
           if (!smat) { sm.materias.push(JSON.parse(JSON.stringify(imat))); return; }
-          const atuais = (smat.lessons || []).filter(l => !(AULAS_PROVISORIAS.includes(l.id) && !l.playlist));
+          const provisorias = (smat.lessons || []).filter(l => AULA_PROVISORIA_PARA[l.id]);
+          const atuais = (smat.lessons || []).filter(l => !AULA_PROVISORIA_PARA[l.id]);
           const ordenadas = imat.lessons.map(il => atuais.find(l => l.id === il.id) || JSON.parse(JSON.stringify(il)));
+          provisorias.forEach(pv => {
+            const alvo = ordenadas.find(l => l.id === AULA_PROVISORIA_PARA[pv.id]);
+            if (alvo && !alvo.playlist && pv.playlist) alvo.playlist = pv.playlist;
+          });
           const extras = atuais.filter(l => !imat.lessons.some(il => il.id === l.id));
           smat.lessons = [...ordenadas, ...extras];
         });
@@ -851,6 +856,10 @@
       const merged = { ...cloud };
       for (const [id, v] of Object.entries(local)) {
         merged[id] = Math.max(merged[id] || 0, v);
+      }
+      // O progresso da aula provisória antiga passa para o Capítulo 1 correspondente
+      for (const [antigo, novoId] of Object.entries(AULA_PROVISORIA_PARA)) {
+        if ((merged[antigo] || 0) > (merged[novoId] || 0)) merged[novoId] = merged[antigo];
       }
       progressCache = merged;
 
