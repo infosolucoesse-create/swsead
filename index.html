@@ -424,16 +424,18 @@
       return list;
     }
 
-    function isModuleCompleted(mObj) {
+    function isMateriaCompleted(mat) {
       const prog = getProgress();
-      let moduleLessons = [];
-      mObj.materias?.forEach(mat => {
-        mat.lessons?.forEach(l => {
-          moduleLessons.push(l);
-        });
-      });
-      if (!moduleLessons.length) return false;
-      return moduleLessons.every(l => (prog[l.id] || 0) >= 100);
+      const lessons = mat.lessons || [];
+      if (!lessons.length) return false;
+      return lessons.every(l => (prog[l.id] || 0) >= 100);
+    }
+    function findMateria(matId) {
+      for (const m of courseData) {
+        const mat = m.materias?.find(x => x.id === matId);
+        if (mat) return mat;
+      }
+      return null;
     }
 
     window.abrirLivroAluno = (modId) => {
@@ -445,18 +447,16 @@
       window.open(mod.livroUrl, "_blank");
     };
 
-    window.abrirProvaAluno = (modId) => {
-      let mod = courseData.find(m => m.id === modId);
-      if (!mod || !mod.provaUrl) {
-        alert("Nenhuma prova cadastrada para este módulo ainda.");
+    window.abrirProvaAluno = (matId) => {
+      const mat = findMateria(matId);
+      if (!mat || !mat.provaUrl) {
+        alert("Nenhuma prova cadastrada para esta matéria ainda.");
         return;
       }
-
-      let concluiu = isModuleCompleted(mod);
-      if (concluiu) {
-        window.open(mod.provaUrl, "_blank");
+      if (isMateriaCompleted(mat)) {
+        window.open(mat.provaUrl, "_blank");
       } else {
-        alert(`🔒 Prova Bloqueada!\n\nVocê precisa assistir a 100% de todas as aulas do ${mod.name} para liberar o formulário de avaliação.`);
+        alert(`🔒 Prova bloqueada!\n\nVocê precisa assistir a 100% das aulas de ${mat.title} para liberar a prova.`);
       }
     };
 
@@ -548,10 +548,11 @@
       `, "login");
       $("formReset").addEventListener("submit", async (e) => {
         e.preventDefault();
-        let email = resolveEmail($("resetInput").value);
+        const rawInput = $("resetInput").value;
+        let email = resolveEmail(rawInput);
         try {
           await sendPasswordResetEmail(auth, email);
-          alert("E-mail de redefinição enviado com sucesso!");
+          alert(rawInput.includes("@") ? "E-mail de redefinição enviado com sucesso!" : "Pedido enviado ao suporte");
           showLoginModal();
         } catch (err) {
           $("err").style.display = "block";
@@ -627,15 +628,15 @@
       $("btnDeleteLivro").addEventListener("click", () => handleDeleteLivro(modId));
     };
 
-    window.showProvaModal = (modId) => {
-      let mod = courseData.find(m => m.id === modId);
+    window.showProvaModal = (matId) => {
+      const mat = findMateria(matId);
       openModal(`
-        <h2>Editar Prova do Módulo</h2>
-        <p class="modal-subtitle">${mod ? mod.name : ''}</p>
+        <h2>Editar Prova da Matéria</h2>
+        <p class="modal-subtitle">${mat ? mat.title : ''}</p>
         <form id="formProva">
           <div class="form-group">
             <label>Link do Formulário da Prova (Google Forms)</label>
-            <input type="url" id="pLink" value="${mod?.provaUrl || ''}" placeholder="https://forms.gle/..." required>
+            <input type="url" id="pLink" value="${mat?.provaUrl || ''}" placeholder="https://forms.gle/..." required>
           </div>
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
             <button class="btn btn-primary" type="submit">💾 Salvar Prova</button>
@@ -646,8 +647,8 @@
           </div>
         </form>
       `);
-      $("formProva").addEventListener("submit", (e) => handleSaveProva(e, modId));
-      $("btnDeleteProva").addEventListener("click", () => handleDeleteProva(modId));
+      $("formProva").addEventListener("submit", (e) => handleSaveProva(e, matId));
+      $("btnDeleteProva").addEventListener("click", () => handleDeleteProva(matId));
     };
 
     function resolveEmail(input) {
@@ -759,23 +760,19 @@
       closeModal();
     }
 
-    async function handleSaveProva(e, modId) {
+    async function handleSaveProva(e, matId) {
       e.preventDefault();
-      let val = $("pLink").value.trim();
-      let mod = courseData.find(m => m.id === modId);
-      if (mod) {
-        mod.provaUrl = val || null;
-      }
+      const val = $("pLink").value.trim();
+      const mat = findMateria(matId);
+      if (mat) mat.provaUrl = val || null;
       await saveCourseData();
       closeModal();
     }
 
-    async function handleDeleteProva(modId) {
-      if (!confirm("Remover o link da prova deste módulo?")) return;
-      let mod = courseData.find(m => m.id === modId);
-      if (mod) {
-        mod.provaUrl = null;
-      }
+    async function handleDeleteProva(matId) {
+      if (!confirm("Remover o link da prova desta matéria?")) return;
+      const mat = findMateria(matId);
+      if (mat) mat.provaUrl = null;
       await saveCourseData();
       closeModal();
     }
@@ -986,9 +983,18 @@
             `;
           }).join("");
 
+          let provaBtnHtml;
+          if (isAdmin) {
+            provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal('${mat.id}')">⚙️ Prova${mat.provaUrl ? ' ✓' : ''}</button>`;
+          } else {
+            const liberada = Boolean(mat.provaUrl) && isMateriaCompleted(mat);
+            const textoProva = mat.provaUrl ? (liberada ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
+            provaBtnHtml = `<button class="action-btn ${liberada ? 'available' : ''}" style="white-space:nowrap;" onclick="abrirProvaAluno('${mat.id}')">${textoProva}</button>`;
+          }
+
           materiasHtml += `
             <div class="materia-block">
-              <div class="materia-header">📖 ${mat.title}</div>
+              <div class="materia-header" style="justify-content:space-between;"><span>📖 ${mat.title}</span>${provaBtnHtml}</div>
               <div class="subjects-grid">${lessonsCardsHtml}</div>
             </div>
           `;
@@ -996,21 +1002,13 @@
 
         if (search && !moduleHasMatches) return;
 
-        // Botões de Livro e Prova no Cabeçalho do Módulo
-        let isCompleted = isModuleCompleted(m);
+        // Botão do Livro no cabeçalho do módulo (a prova agora fica em cada matéria)
         let livroBtnHtml = "";
-        let provaBtnHtml = "";
-
         if (isAdmin) {
           livroBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showLivroModal(${m.id})">⚙️ Livro</button>`;
-          provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal(${m.id})">⚙️ Prova</button>`;
         } else {
           let livroClasse = m.livroUrl ? 'available' : '';
           livroBtnHtml = `<button class="action-btn ${livroClasse}" style="white-space:nowrap;" onclick="abrirLivroAluno(${m.id})">📚 Livro</button>`;
-
-          let btnClasse = m.provaUrl ? (isCompleted ? 'available' : '') : '';
-          let btnTexto = m.provaUrl ? (isCompleted ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
-          provaBtnHtml = `<button class="action-btn ${btnClasse}" style="white-space:nowrap;" onclick="abrirProvaAluno(${m.id})">${btnTexto}</button>`;
         }
 
         html += `
@@ -1021,7 +1019,6 @@
               </button>
               <div class="module-actions">
                 ${livroBtnHtml}
-                ${provaBtnHtml}
               </div>
             </div>
             <div class="module-content">
