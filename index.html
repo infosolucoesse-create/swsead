@@ -230,7 +230,10 @@
       getDoc,   
       setDoc,
       collection,
-      getDocs
+      getDocs,
+      query,
+      where,
+      deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -703,8 +706,7 @@
           const versaoSalva = docSnap.data().estruturaVersao || 0;
           courseData = mergeCourseData(salvo, initialCourseData, versaoSalva);
           // O administrador grava o curso já completo; os alunos apenas veem a versão mesclada
-          const em = (currentUser || "").toLowerCase();
-          const souAdmin = em === "infosolucoesse@gmail.com" || em.startsWith("infosolucoesse+anderson@");
+          const souAdmin = ehAdmin();
           if (souAdmin && (versaoSalva < ESTRUTURA_VERSAO || JSON.stringify(courseData) !== JSON.stringify(salvo))) {
             await setDoc(docRef, { modules: courseData, estruturaVersao: ESTRUTURA_VERSAO });
           }
@@ -793,7 +795,8 @@
       });
     };
 
-    window.showRegisterModal = () => {
+    window.showRegisterModal = async () => {
+      if (ehSuperAdmin()) await carregarAdminsLista();
       openModal(`
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
           <img src="logo.jpg" alt="Logo" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
@@ -806,6 +809,7 @@
           <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="nu" placeholder="Ex: marcos ou aluno@exemplo.com" required></div>
           <div class="form-group"><label>Senha Inicial</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
           ${acessoFormHtml(null)}
+          ${visibilidadeHtml([])}
           <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn btn-primary" type="submit" style="flex:1;">Criar Usuário</button>
             <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancelar</button>
@@ -916,6 +920,8 @@
         alert("Escolha ao menos um módulo para liberar.");
         return;
       }
+      // Administrador geral escolhe quem vê o aluno; administrador comum vê os alunos que ele mesmo cadastra
+      const visivelPara = ehSuperAdmin() ? lerVisibilidadeDoForm() : [auth.currentUser.uid];
       let uid;
       try {
         // Cria o usuário na segunda instância: o administrador continua logado
@@ -927,7 +933,7 @@
         return;
       }
       try {
-        await setDoc(doc(db, "acessos", uid), { email, ...acesso, atualizadoEm: Date.now() });
+        await setDoc(doc(db, "acessos", uid), { email, ...acesso, visivelPara, atualizadoEm: Date.now() });
         alert(`Usuário '${rawInput}' cadastrado com sucesso!`);
         closeModal();
       } catch (error) {
@@ -951,10 +957,9 @@
       
       $("currentUserName").textContent = displayName;
       
-      let emailLower = currentUser.toLowerCase();
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
-      
-      $("userRoleTag").textContent = isAdmin ? "Administrador" : "Aluno";
+      await loadAdminRole();
+      const isAdmin = ehAdmin();
+      $("userRoleTag").textContent = ehSuperAdmin() ? "Administrador geral" : (isAdmin ? "Administrador" : "Aluno");
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
       $("btnProgressoAlunos").style.display = isAdmin ? "inline-block" : "none";
       await loadProgressFromCloud();
@@ -1120,13 +1125,26 @@
     window.showAdminProgress = async () => {
       openModal(`<h2>Progresso dos alunos</h2><p class="modal-subtitle" id="admStatus">Carregando...</p>`, "wide");
       try {
-        const [snapP, snapA] = await Promise.all([
-          getDocs(collection(db, "progresso")),
-          getDocs(collection(db, "acessos"))
-        ]);
         const acessos = {}, base = {};
-        snapA.forEach(d => { acessos[d.id] = d.data(); });
-        snapP.forEach(d => { base[d.id] = d.data(); });
+        if (ehSuperAdmin()) {
+          await carregarAdminsLista();
+          const [snapP, snapA] = await Promise.all([
+            getDocs(collection(db, "progresso")),
+            getDocs(collection(db, "acessos"))
+          ]);
+          snapA.forEach(d => { acessos[d.id] = d.data(); });
+          snapP.forEach(d => { base[d.id] = d.data(); });
+        } else {
+          // Administrador comum: somente os alunos liberados para ele
+          const snapA = await getDocs(query(collection(db, "acessos"), where("visivelPara", "array-contains", auth.currentUser.uid)));
+          snapA.forEach(d => { acessos[d.id] = d.data(); });
+          await Promise.all(Object.keys(acessos).map(async (uid) => {
+            try {
+              const sp = await getDoc(doc(db, "progresso", uid));
+              if (sp.exists()) base[uid] = sp.data();
+            } catch (e) { console.error("Erro ao ler progresso de um aluno:", e); }
+          }));
+        }
         // alunos criados pelo administrador que ainda não entraram também aparecem
         Object.keys(acessos).forEach(uid => { if (!base[uid]) base[uid] = { email: acessos[uid].email, aulas: {} }; });
         adminRows = Object.entries(base).map(([uid, data]) => {
@@ -1137,6 +1155,7 @@
           const email = data.email || acesso?.email || "";
           return {
             uid, email, nome: nomeDoEmail(email), acesso,
+            visivelPara: acesso?.visivelPara || [],
             geral: lessons.length ? Math.round(sum / lessons.length) : 0,
             concluidas: lessons.filter(l => (aulas[l.id] || 0) >= 100).length,
             andamento: lessons.filter(l => { const v = aulas[l.id] || 0; return v > 0 && v < 100; }).length,
@@ -1158,6 +1177,11 @@
       return nomes.length ? "Módulos " + nomes.join(", ") + " (em sequência)" : "Nenhum módulo";
     }
 
+    function textoVisivel(ids) {
+      const nomes = (ids || []).map(uid => adminsMap[uid] ? nomeDoEmail(adminsMap[uid].email) : "").filter(Boolean);
+      return nomes.length ? "Visível para: " + nomes.join(", ") : "Visível só ao administrador geral";
+    }
+
     window.editarAcesso = (uid) => {
       const r = adminRows.find(x => x.uid === uid);
       if (!r) return;
@@ -1166,6 +1190,7 @@
         <p class="modal-subtitle">${esc(r.nome)}${r.email && r.nome !== r.email ? " — " + esc(r.email) : ""}</p>
         <form id="formAcesso">
           ${acessoFormHtml(r.acesso)}
+          ${visibilidadeHtml(r.visivelPara)}
           <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn btn-primary" type="submit" style="flex:1;">Salvar</button>
             <button class="btn btn-secondary" type="button" onclick="showAdminProgress()">Voltar</button>
@@ -1179,8 +1204,12 @@
           alert("Escolha ao menos um módulo para liberar.");
           return;
         }
+        // Administrador comum altera só o acesso aos módulos; quem vê o aluno é definido pelo administrador geral
+        const dados = ehSuperAdmin()
+          ? { email: r.email, ...acesso, visivelPara: lerVisibilidadeDoForm(), atualizadoEm: Date.now() }
+          : { ...acesso, atualizadoEm: Date.now() };
         try {
-          await setDoc(doc(db, "acessos", uid), { email: r.email, ...acesso, atualizadoEm: Date.now() });
+          await setDoc(doc(db, "acessos", uid), dados, { merge: true });
           showAdminProgress();
         } catch (err) {
           console.error("Erro ao salvar o acesso:", err);
@@ -1189,12 +1218,32 @@
       });
     };
 
+    // Somente o administrador geral promove ou remove administradores
+    window.alternarAdmin = async (uid) => {
+      if (!ehSuperAdmin()) return;
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      const jaAdmin = Boolean(adminsMap[uid]);
+      const pergunta = jaAdmin
+        ? `Remover ${r.nome} como administrador?`
+        : `Tornar ${r.nome} administrador?\n\nEle poderá editar links, provas e livros, cadastrar alunos e ver somente os alunos que você liberar para ele.`;
+      if (!confirm(pergunta)) return;
+      try {
+        if (jaAdmin) await deleteDoc(doc(db, "admins", uid));
+        else await setDoc(doc(db, "admins", uid), { email: r.email, criadoEm: Date.now() });
+        showAdminProgress();
+      } catch (err) {
+        console.error("Erro ao alterar administrador:", err);
+        alert("Não foi possível alterar o administrador. Confira se as regras do Firestore foram atualizadas.");
+      }
+    };
+
     function renderAdminShell() {
       $("modalContent").innerHTML = `
         <div class="adm-top">
           <div>
             <h2>Progresso dos alunos</h2>
-            <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.length} aluno(s) registrado(s). Clique em um aluno para ver as aulas.</p>
+            <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.length} aluno(s) ${ehSuperAdmin() ? "registrado(s)" : "liberado(s) para você"}. Clique em um aluno para ver as aulas.</p>
           </div>
           <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
         </div>
@@ -1224,6 +1273,7 @@
         $("admBody").innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>`;
         return;
       }
+      const souGeral = ehSuperAdmin();
       $("admBody").innerHTML = rows.map(r => {
         let detalhe = "";
         courseData.forEach(m => m.materias?.forEach(mat => mat.lessons?.forEach(l => {
@@ -1234,11 +1284,11 @@
         const quando = r.ultimo ? new Date(r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
         return `
           <tr class="adm-row" onclick="toggleAdminDetail('${esc(r.uid)}')">
-            <td><strong>${esc(r.nome)}</strong>${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}</td>
+            <td><strong>${esc(r.nome)}</strong>${adminsMap[r.uid] ? ' <span class="role-badge">Administrador</span>' : ""}${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}</td>
             <td><strong>${r.geral}%</strong><div class="adm-bar"><div style="width:${r.geral}%"></div></div></td>
             <td>${r.concluidas}</td>
             <td>${r.andamento}</td>
-            <td>${esc(textoAcesso(r.acesso))}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Alterar acesso</button></td>
+            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Alterar acesso</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
             <td>${quando}</td>
           </tr>
           <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="6" class="adm-detail">${detalhe}</td></tr>`;
@@ -1249,9 +1299,56 @@
     const modulosAbertos = new Set();
     const materiasAbertas = new Set();
 
-    function ehAdmin() {
+    // Administrador geral: e-mails exatos. Administrador comum: possui um documento em /admins/{uid}.
+    let papelSubAdmin = false;
+    let adminsMap = {};   // uid -> { email }  (carregado pelo administrador geral)
+
+    function ehSuperAdmin() {
       const e = (currentUser || "").toLowerCase();
-      return e === "infosolucoesse@gmail.com" || e.startsWith("infosolucoesse+anderson@");
+      return e === "infosolucoesse@gmail.com" || e === "infosolucoesse+anderson@gmail.com";
+    }
+
+    function ehAdmin() {
+      return ehSuperAdmin() || papelSubAdmin;
+    }
+
+    async function loadAdminRole() {
+      papelSubAdmin = false;
+      try {
+        const snap = await getDoc(doc(db, "admins", auth.currentUser.uid));
+        papelSubAdmin = snap.exists();
+      } catch (err) {
+        console.error("Erro ao carregar o papel do usuário:", err);
+      }
+    }
+
+    async function carregarAdminsLista() {
+      adminsMap = {};
+      try {
+        const snap = await getDocs(collection(db, "admins"));
+        snap.forEach(d => { adminsMap[d.id] = d.data(); });
+      } catch (err) {
+        console.error("Erro ao carregar os administradores:", err);
+      }
+    }
+
+    // Quais administradores comuns podem ver o aluno (só o administrador geral define)
+    function visibilidadeHtml(selecionados) {
+      if (!ehSuperAdmin()) return "";
+      const lista = Object.entries(adminsMap);
+      const itens = lista.length
+        ? lista.map(([uid, a]) => `<label class="opt"><input type="checkbox" name="visivelAdmin" value="${esc(uid)}" ${(selecionados || []).includes(uid) ? "checked" : ""}> ${esc(nomeDoEmail(a.email))}</label>`).join("")
+        : `<span style="font-size:12px; color:var(--text-muted);">Nenhum administrador comum cadastrado ainda.</span>`;
+      return `
+        <div class="form-group">
+          <label>Administradores que podem ver este aluno</label>
+          ${itens}
+          <span style="font-size:11px; color:var(--text-muted);">Se nenhum for marcado, só o administrador geral vê este aluno.</span>
+        </div>`;
+    }
+
+    function lerVisibilidadeDoForm() {
+      return [...document.querySelectorAll('input[name="visivelAdmin"]:checked')].map(i => i.value);
     }
 
     function moduloConcluido(m) {
@@ -1358,8 +1455,7 @@
 
     window.renderModules = () => {
       let search = $("searchInput").value.toLowerCase().trim();
-      let emailLower = currentUser?.toLowerCase() || "";
-      let isAdmin = emailLower === "infosolucoesse@gmail.com" || emailLower.startsWith("infosolucoesse+anderson@");
+      let isAdmin = ehAdmin();
       let prog = getProgress();
       let html = "";
 
