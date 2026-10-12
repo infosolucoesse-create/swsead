@@ -643,7 +643,7 @@
         alert("Nenhuma prova cadastrada para esta matéria ainda.");
         return;
       }
-      if (isMateriaCompleted(mat)) {
+      if (ehAdmin() || isMateriaCompleted(mat)) {
         window.open(mat.provaUrl, "_blank");
       } else {
         alert(`🔒 Prova bloqueada!\n\nVocê precisa assistir a 100% das aulas de ${mat.title} para liberar a prova.`);
@@ -706,7 +706,7 @@
           const versaoSalva = docSnap.data().estruturaVersao || 0;
           courseData = mergeCourseData(salvo, initialCourseData, versaoSalva);
           // O administrador grava o curso já completo; os alunos apenas veem a versão mesclada
-          const souAdmin = ehAdmin();
+          const souAdmin = ehSuperAdmin();
           if (souAdmin && (versaoSalva < ESTRUTURA_VERSAO || JSON.stringify(courseData) !== JSON.stringify(salvo))) {
             await setDoc(docRef, { modules: courseData, estruturaVersao: ESTRUTURA_VERSAO });
           }
@@ -821,6 +821,7 @@
     };
 
     window.showLinkModal = (subId) => {
+      if (!ehSuperAdmin()) return;
       let sub = getAllLessons().find(s => s.id === subId);
       openModal(`
         <h2>Editar Aula / Capítulo</h2>
@@ -844,6 +845,7 @@
     };
 
     window.showLivroModal = (modId) => {
+      if (!ehSuperAdmin()) return;
       let mod = courseData.find(m => m.id === modId);
       openModal(`
         <h2>Editar Livro / Apostila (PDF)</h2>
@@ -867,6 +869,7 @@
     };
 
     window.showProvaModal = (matId) => {
+      if (!ehSuperAdmin()) return;
       const mat = findMateria(matId);
       openModal(`
         <h2>Editar Prova da Matéria</h2>
@@ -1226,7 +1229,7 @@
       const jaAdmin = Boolean(adminsMap[uid]);
       const pergunta = jaAdmin
         ? `Remover ${r.nome} como administrador?`
-        : `Tornar ${r.nome} administrador?\n\nEle poderá editar links, provas e livros, cadastrar alunos e ver somente os alunos que você liberar para ele.`;
+        : `Tornar ${r.nome} administrador?\n\nEle poderá cadastrar alunos e ver somente os alunos que você liberar para ele. Não poderá inserir nem excluir links.`;
       if (!confirm(pergunta)) return;
       try {
         if (jaAdmin) await deleteDoc(doc(db, "admins", uid));
@@ -1455,7 +1458,7 @@
 
     window.renderModules = () => {
       let search = $("searchInput").value.toLowerCase().trim();
-      let isAdmin = ehAdmin();
+      let isAdmin = ehSuperAdmin(); // somente o administrador geral edita links (aulas, livro e prova)
       let prog = getProgress();
       let html = "";
 
@@ -1498,7 +1501,7 @@
           if (isAdmin) {
             provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal('${mat.id}')">⚙️ Prova${mat.provaUrl ? ' ✓' : ''}</button>`;
           } else {
-            const liberada = Boolean(mat.provaUrl) && isMateriaCompleted(mat);
+            const liberada = Boolean(mat.provaUrl) && (ehAdmin() || isMateriaCompleted(mat));
             const textoProva = mat.provaUrl ? (liberada ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
             provaBtnHtml = `<button class="action-btn ${liberada ? 'available' : ''}" style="white-space:nowrap;" onclick="abrirProvaAluno('${mat.id}')">${textoProva}</button>`;
           }
