@@ -92,6 +92,9 @@
     .module-content { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border-color); }
     .module.open .module-content { display: block; }
 
+    .module.locked .module-toggle { opacity: 0.6; cursor: not-allowed; }
+    .materia-toggle { flex: 1; cursor: pointer; user-select: none; }
+    .materia-count { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
     .materia-block { margin-top: 20px; }
     .materia-header { font-size: 15px; font-weight: 700; color: var(--accent); padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 
@@ -307,19 +310,47 @@
         materias: [
           {
             id: "mat_m2_1", title: "Introdução Bíblica",
-            lessons: [{ id: "m2_1_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m2_1_intro", name: "Introdução", playlist: null },
+              { id: "m2_1_cap1", name: "Capítulo 1: Sobre a Bíblia", playlist: null },
+              { id: "m2_1_cap2", name: "Capítulo 2: Os materiais usados para escrita", playlist: null },
+              { id: "m2_1_cap3", name: "Capítulo 3: A formação do cânon", playlist: null },
+              { id: "m2_1_cap4", name: "Capítulo 4: Inspiração e inerrância da Bíblia", playlist: null },
+              { id: "m2_1_cap5", name: "Capítulo 5: As traduções da Bíblia", playlist: null },
+              { id: "m2_1_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m2_2", title: "Panorama do AT",
-            lessons: [{ id: "m2_2_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m2_2_intro", name: "Introdução", playlist: null },
+              { id: "m2_2_cap1", name: "Capítulo 1: Pentateuco", playlist: null },
+              { id: "m2_2_cap2", name: "Capítulo 2: Livros históricos", playlist: null },
+              { id: "m2_2_cap3", name: "Capítulo 3: Livros poéticos", playlist: null },
+              { id: "m2_2_cap4", name: "Capítulo 4: Livros proféticos", playlist: null },
+              { id: "m2_2_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m2_3", title: "Período Interbíblico",
-            lessons: [{ id: "m2_3_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m2_3_intro", name: "Introdução", playlist: null },
+              { id: "m2_3_cap1", name: "Capítulo 1: Literatura apócrifa", playlist: null },
+              { id: "m2_3_cap2", name: "Capítulo 2: A revolta dos macabeus", playlist: null },
+              { id: "m2_3_cap3", name: "Capítulo 3: O fim do silêncio profético", playlist: null },
+              { id: "m2_3_cap4", name: "Capítulo 4: Seitas políticas – religiosas e instituições judaicas", playlist: null },
+              { id: "m2_3_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m2_4", title: "Panorama do NT",
-            lessons: [{ id: "m2_4_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m2_4_intro", name: "Introdução", playlist: null },
+              { id: "m2_4_cap1", name: "Capítulo 1: Os livros biográficos e Atos", playlist: null },
+              { id: "m2_4_cap2", name: "Capítulo 2: Epístolas paulinas", playlist: null },
+              { id: "m2_4_cap3", name: "Capítulo 3: As epístolas gerais e Apocalipse", playlist: null },
+              { id: "m2_4_conc", name: "Conclusão", playlist: null }
+            ]
           }
         ]
       },
@@ -331,19 +362,67 @@
         materias: [
           {
             id: "mat_m3_1", title: "Geografia Bíblica",
-            lessons: [{ id: "m3_1_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m3_1_intro", name: "Introdução", playlist: null },
+              { id: "m3_1_cap1", name: "Capítulo 1: A Mesopotâmia", playlist: null },
+              { id: "m3_1_cap2", name: "Capítulo 2: Os Grandes Impérios Antigos", playlist: null },
+              { id: "m3_1_cap3", name: "Capítulo 3: Antigos Povos da Palestina", playlist: null },
+              { id: "m3_1_cap4", name: "Capítulo 4: A Hidrografia da Palestina", playlist: null },
+              { id: "m3_1_cap5", name: "Capítulo 5: Vales da Palestina", playlist: null },
+              { id: "m3_1_cap6", name: "Capítulo 6: Fauna, Flora e o Clima da Palestina", playlist: null },
+              { id: "m3_1_cap7", name: "Capítulo 7: Montanhas e Montes da Palestina", playlist: null },
+              { id: "m3_1_cap8", name: "Capítulo 8: Principais Cidades de Israel", playlist: null },
+              { id: "m3_1_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m3_2", title: "História de Israel",
-            lessons: [{ id: "m3_2_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m3_2_intro", name: "Introdução", playlist: null },
+              { id: "m3_2_cap1", name: "Capítulo 1: A Origem de uma Nação", playlist: null },
+              { id: "m3_2_cap2", name: "Capítulo 2: Os Principais Patriarcas", playlist: null },
+              { id: "m3_2_cap3", name: "Capítulo 3: O Cativeiro Egípcio", playlist: null },
+              { id: "m3_2_cap4", name: "Capítulo 4: A Conquista da Palestina", playlist: null },
+              { id: "m3_2_cap5", name: "Capítulo 5: O Período Teocrático", playlist: null },
+              { id: "m3_2_cap6", name: "Capítulo 6: A Monarquia em Israel", playlist: null },
+              { id: "m3_2_cap7", name: "Capítulo 7: Os Cativeiros de Israel e de Judá", playlist: null },
+              { id: "m3_2_cap8", name: "Capítulo 8: Israel nos Tempos de Jesus", playlist: null },
+              { id: "m3_2_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m3_3", title: "História da Igreja",
-            lessons: [{ id: "m3_3_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m3_3_intro", name: "Introdução", playlist: null },
+              { id: "m3_3_cap1", name: "Capítulo 1: Origem do Cristianismo", playlist: null },
+              { id: "m3_3_cap2", name: "Capítulo 2: As Perseguições Imperiais", playlist: null },
+              { id: "m3_3_cap3", name: "Capítulo 3: Os Pais da Igreja", playlist: null },
+              { id: "m3_3_cap4", name: "Capítulo 4: O Monasticismo", playlist: null },
+              { id: "m3_3_cap5", name: "Capítulo 5: O Papado", playlist: null },
+              { id: "m3_3_cap6", name: "Capítulo 6: Os Concílios Ecumênicos", playlist: null },
+              { id: "m3_3_cap7", name: "Capítulo 7: Os Massacres e as Cruzadas", playlist: null },
+              { id: "m3_3_cap8", name: "Capítulo 8: Os Grandes Cismas da Igreja", playlist: null },
+              { id: "m3_3_cap9", name: "Capítulo 9: A Inquisição", playlist: null },
+              { id: "m3_3_cap10", name: "Capítulo 10: Reforma Protestante", playlist: null },
+              { id: "m3_3_cap11", name: "Capítulo 11: Maiores Movimentos Protestantes", playlist: null },
+              { id: "m3_3_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m3_4", title: "Eclesiologia",
-            lessons: [{ id: "m3_4_1", name: "Aulas da Disciplina", playlist: null }]
+            lessons: [
+              { id: "m3_4_intro", name: "Introdução", playlist: null },
+              { id: "m3_4_cap1", name: "Capítulo 1: Sobre a Igreja", playlist: null },
+              { id: "m3_4_cap2", name: "Capítulo 2: A Igreja Institucional", playlist: null },
+              { id: "m3_4_cap3", name: "Capítulo 3: Sistemas de Governo", playlist: null },
+              { id: "m3_4_cap4", name: "Capítulo 4: Os Ministros e Oficiais da Igreja", playlist: null },
+              { id: "m3_4_cap5", name: "Capítulo 5: Ordenanças da Igreja", playlist: null },
+              { id: "m3_4_cap6", name: "Capítulo 6: Atributos, Desafios e Missão da Igreja", playlist: null },
+              { id: "m3_4_cap7", name: "Capítulo 7: A Disciplina na Igreja", playlist: null },
+              { id: "m3_4_cap8", name: "Capítulo 8: A Igreja e o Culto", playlist: null },
+              { id: "m3_4_cap9", name: "Capítulo 9: A Igreja e o Senhorio de Jesus", playlist: null },
+              { id: "m3_4_conc", name: "Conclusão", playlist: null }
+            ]
           }
         ]
       },
@@ -355,19 +434,48 @@
         materias: [
           {
             id: "mat_m4_1", title: "Hermenêutica",
-            lessons: [{ id: "m4_1", name: "Aulas de Hermenêutica", playlist: "PLYTvo-pfIcGLm0qoTU57fgRkQ7L49BHke" }]
+            lessons: [
+              { id: "m4_1_intro", name: "Introdução", playlist: null },
+              { id: "m4_1_cap1", name: "Capítulo 1: A importância da hermenêutica", playlist: null },
+              { id: "m4_1_cap2", name: "Capítulo 2: As duas escolas de interpretações", playlist: null },
+              { id: "m4_1_cap3", name: "Capítulo 3: Métodos e estudos", playlist: null },
+              { id: "m4_1_cap4", name: "Capítulo 4: Figuras, parábolas, profecias e símbolos", playlist: null },
+              { id: "m4_1_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m4_2", title: "Homilética",
-            lessons: [{ id: "m4_2", name: "Aulas de Homilética", playlist: "PLYTvo-pfIcGLsefbBMkuzDippSDowKruJ" }]
+            lessons: [
+              { id: "m4_2_intro", name: "Introdução", playlist: null },
+              { id: "m4_2_cap1", name: "Capítulo 1: Aspectos da homilética", playlist: null },
+              { id: "m4_2_cap2", name: "Capítulo 2: O pregador", playlist: null },
+              { id: "m4_2_cap3", name: "Capítulo 3: O sermão", playlist: null },
+              { id: "m4_2_cap4", name: "Capítulo 4: A contemporaneidade do sermão", playlist: null },
+              { id: "m4_2_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m4_3", title: "Evangelismo",
-            lessons: [{ id: "m4_3", name: "Aulas de Evangelismo", playlist: "PLYTvo-pfIcGJyW6W3p3nkJqcaeqiMp2Gv" }]
+            lessons: [
+              { id: "m4_3_intro", name: "Introdução", playlist: null },
+              { id: "m4_3_cap1", name: "Capítulo 1: O Ide: o evangelismo em ação", playlist: null },
+              { id: "m4_3_cap2", name: "Capítulo 2: Evangelismo urbano", playlist: null },
+              { id: "m4_3_cap3", name: "Capítulo 3: Evangelismo social", playlist: null },
+              { id: "m4_3_cap4", name: "Capítulo 4: Evangelismo por faixa etária", playlist: null },
+              { id: "m4_3_cap5", name: "Capítulo 5: O evangelismo em massa", playlist: null },
+              { id: "m4_3_conc", name: "Conclusão", playlist: null }
+            ]
           },
           {
             id: "mat_m4_4", title: "Missiologia",
-            lessons: [{ id: "m4_4", name: "Aulas de Missiologia", playlist: "PLYTvo-pfIcGK4Wb1MOFoEg6IObRbS8YxG" }]
+            lessons: [
+              { id: "m4_4_intro", name: "Introdução", playlist: null },
+              { id: "m4_4_cap1", name: "Capítulo 1: O que é missões", playlist: null },
+              { id: "m4_4_cap2", name: "Capítulo 2: Desafios missionários", playlist: null },
+              { id: "m4_4_cap3", name: "Capítulo 3: Estratégia missionária", playlist: null },
+              { id: "m4_4_cap4", name: "Capítulo 4: A igreja perseguida", playlist: null },
+              { id: "m4_4_conc", name: "Conclusão", playlist: null }
+            ]
           }
         ]
       },
@@ -377,10 +485,40 @@
         provaUrl: null,
         livroUrl: null,
         materias: [
-          { id: "mat_m5_1", title: "Antropologia", lessons: [{ id: "m5_1", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_2", title: "Hamartiologia", lessons: [{ id: "m5_2", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_3", title: "Angelologia", lessons: [{ id: "m5_3", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m5_4", title: "Família Cristã", lessons: [{ id: "m5_4", name: "Aulas da Disciplina", playlist: null }] }
+          { id: "mat_m5_1", title: "Antropologia", lessons: [
+              { id: "m5_1_intro", name: "Introdução", playlist: null },
+              { id: "m5_1_cap1", name: "Capítulo 1: A origem do homem", playlist: null },
+              { id: "m5_1_cap2", name: "Capítulo 2: A natureza humana", playlist: null },
+              { id: "m5_1_cap3", name: "Capítulo 3: Os propósitos da criação do homem", playlist: null },
+              { id: "m5_1_cap4", name: "Capítulo 4: Adão e Cristo", playlist: null },
+              { id: "m5_1_conc", name: "Conclusão", playlist: null }
+            ] },
+          { id: "mat_m5_2", title: "Hamartiologia", lessons: [
+              { id: "m5_2_intro", name: "Introdução", playlist: null },
+              { id: "m5_2_cap1", name: "Capítulo 1: O que é pecado", playlist: null },
+              { id: "m5_2_cap2", name: "Capítulo 2: A queda do homem", playlist: null },
+              { id: "m5_2_cap3", name: "Capítulo 3: O pecado original", playlist: null },
+              { id: "m5_2_cap4", name: "Capítulo 4: A universalidade do pecado", playlist: null },
+              { id: "m5_2_cap5", name: "Capítulo 5: Jesus e o pecado", playlist: null },
+              { id: "m5_2_conc", name: "Conclusão", playlist: null }
+            ] },
+          { id: "mat_m5_3", title: "Angelologia", lessons: [
+              { id: "m5_3_intro", name: "Introdução", playlist: null },
+              { id: "m5_3_cap1", name: "Capítulo 1: Os anjos", playlist: null },
+              { id: "m5_3_cap2", name: "Capítulo 2: A natureza e consciência dos anjos", playlist: null },
+              { id: "m5_3_cap3", name: "Capítulo 3: A missão dos anjos", playlist: null },
+              { id: "m5_3_cap4", name: "Capítulo 4: A classificação dos anjos", playlist: null },
+              { id: "m5_3_conc", name: "Conclusão", playlist: null }
+            ] },
+          { id: "mat_m5_4", title: "Família Cristã", lessons: [
+              { id: "m5_4_intro", name: "Introdução", playlist: null },
+              { id: "m5_4_cap1", name: "Capítulo 1: A família", playlist: null },
+              { id: "m5_4_cap2", name: "Capítulo 2: Os papéis de cada membro da família", playlist: null },
+              { id: "m5_4_cap3", name: "Capítulo 3: A vida conjugal", playlist: null },
+              { id: "m5_4_cap4", name: "Capítulo 4: Desafios da família", playlist: null },
+              { id: "m5_4_cap5", name: "Capítulo 5: A Igreja e a família", playlist: null },
+              { id: "m5_4_conc", name: "Conclusão", playlist: null }
+            ] }
         ]
       },
       {
@@ -389,10 +527,35 @@
         provaUrl: null,
         livroUrl: null,
         materias: [
-          { id: "mat_m6_1", title: "Escatologia", lessons: [{ id: "m6_1", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_2", title: "Soteriologia", lessons: [{ id: "m6_2", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_3", title: "Liturgia Cristã", lessons: [{ id: "m6_3", name: "Aulas da Disciplina", playlist: null }] },
-          { id: "mat_m6_4", title: "Língua Portuguesa", lessons: [{ id: "m6_4", name: "Aulas da Disciplina", playlist: null }] }
+          { id: "mat_m6_1", title: "Escatologia", lessons: [
+              { id: "m6_1_intro", name: "Introdução", playlist: null },
+              { id: "m6_1_cap1", name: "Capítulo 1: Os sinais dos últimos dias", playlist: null },
+              { id: "m6_1_cap2", name: "Capítulo 2: O Arrebatamento da Igreja, o Tribunal de Cristo e as Bodas do Cordeiro", playlist: null },
+              { id: "m6_1_cap3", name: "Capítulo 3: A Grande Tribulação e o Milênio", playlist: null },
+              { id: "m6_1_cap4", name: "Capítulo 4: O Juízo Final e a Eternidade", playlist: null },
+              { id: "m6_1_conc", name: "Conclusão", playlist: null }
+            ] },
+          { id: "mat_m6_2", title: "Soteriologia", lessons: [
+              { id: "m6_2_intro", name: "Introdução", playlist: null },
+              { id: "m6_2_cap1", name: "Capítulo 1: A Salvação", playlist: null },
+              { id: "m6_2_cap2", name: "Capítulo 2: A Queda e a Depravação Total", playlist: null },
+              { id: "m6_2_cap3", name: "Capítulo 3: Eleição e Predestinação", playlist: null },
+              { id: "m6_2_cap4", name: "Capítulo 4: A Graça e Expiação", playlist: null },
+              { id: "m6_2_cap5", name: "Capítulo 5: A Segurança em Cristo", playlist: null },
+              { id: "m6_2_conc", name: "Conclusão", playlist: null }
+            ] },
+          { id: "mat_m6_3", title: "Liturgia Cristã", lessons: [
+              { id: "m6_3_cap1", name: "Capítulo 1: Definições", playlist: null },
+              { id: "m6_3_cap2", name: "Capítulo 2: A liturgia no Antigo Testamento", playlist: null },
+              { id: "m6_3_cap3", name: "Capítulo 3: A liturgia no Novo Testamento", playlist: null },
+              { id: "m6_3_cap4", name: "Capítulo 4: A liturgia contemporânea", playlist: null }
+            ] },
+          { id: "mat_m6_4", title: "Língua Portuguesa", lessons: [
+              { id: "m6_4_intro", name: "Introdução", playlist: null },
+              { id: "m6_4_cap1", name: "Capítulo 1: Classes de palavras", playlist: null },
+              { id: "m6_4_cap2", name: "Capítulo 2: Técnicas de redação", playlist: null },
+              { id: "m6_4_cap3", name: "Capítulo 3: Regras básicas para comunicadores evangélicos", playlist: null }
+            ] }
         ]
       }
     ];
@@ -480,19 +643,25 @@
 
     async function saveCourseData() {
       try {
-        await setDoc(doc(db, "cursos", "geral_v3"), { modules: courseData });
+        await setDoc(doc(db, "cursos", "geral_v3"), { modules: courseData, estruturaVersao: ESTRUTURA_VERSAO });
         renderModules();
       } catch (error) {
         console.error("Erro ao salvar no Firestore:", error);
       }
     }
 
+    // Versão da estrutura do curso. Se o curso salvo tiver versão menor, as aulas dos módulos II a VI
+    // são substituídas pelas do código (uma única vez). Depois disso, links novos nunca são sobrescritos.
+    const ESTRUTURA_VERSAO = 2;
+    const MODULOS_SOBRESCRITOS = [2, 3, 4, 5, 6];
+
     // Aulas provisórias antigas (uma só por matéria): são removidas; se tinham link, ele passa para o Capítulo 1 correspondente
     const AULA_PROVISORIA_PARA = { m1_cristo_1: "m1_cristo_cap1", m1_pneumat_1: "m1_pneumat_cap1", m1_etica_1: "m1_etica_cap1" };
 
     // Completa o curso salvo na nuvem com módulos, matérias e aulas novas do código,
     // sem apagar nenhum link nem prova já cadastrados.
-    function mergeCourseData(saved, initial) {
+    function mergeCourseData(saved, initial, versaoSalva = 0) {
+      const sobrescrever = versaoSalva < ESTRUTURA_VERSAO;
       const out = JSON.parse(JSON.stringify(saved));
       initial.forEach(im => {
         const sm = out.find(m => m.id === im.id);
@@ -501,6 +670,10 @@
         im.materias.forEach(imat => {
           const smat = sm.materias.find(x => x.id === imat.id);
           if (!smat) { sm.materias.push(JSON.parse(JSON.stringify(imat))); return; }
+          if (sobrescrever && MODULOS_SOBRESCRITOS.includes(im.id)) {
+            smat.lessons = JSON.parse(JSON.stringify(imat.lessons));
+            return;
+          }
           const provisorias = (smat.lessons || []).filter(l => AULA_PROVISORIA_PARA[l.id]);
           const atuais = (smat.lessons || []).filter(l => !AULA_PROVISORIA_PARA[l.id]);
           const ordenadas = imat.lessons.map(il => atuais.find(l => l.id === il.id) || JSON.parse(JSON.stringify(il)));
@@ -521,15 +694,16 @@
         const docSnap = await getDoc(docRef);
         if (docSnap.exists() && docSnap.data().modules) {
           const salvo = docSnap.data().modules;
-          courseData = mergeCourseData(salvo, initialCourseData);
+          const versaoSalva = docSnap.data().estruturaVersao || 0;
+          courseData = mergeCourseData(salvo, initialCourseData, versaoSalva);
           // O administrador grava o curso já completo; os alunos apenas veem a versão mesclada
           const em = (currentUser || "").toLowerCase();
           const souAdmin = em === "infosolucoesse@gmail.com" || em.startsWith("infosolucoesse+anderson@");
-          if (souAdmin && JSON.stringify(courseData) !== JSON.stringify(salvo)) {
-            await setDoc(docRef, { modules: courseData });
+          if (souAdmin && (versaoSalva < ESTRUTURA_VERSAO || JSON.stringify(courseData) !== JSON.stringify(salvo))) {
+            await setDoc(docRef, { modules: courseData, estruturaVersao: ESTRUTURA_VERSAO });
           }
         } else {
-          await setDoc(docRef, { modules: initialCourseData });
+          await setDoc(docRef, { modules: initialCourseData, estruturaVersao: ESTRUTURA_VERSAO });
         }
       } catch (error) {
         console.error("Erro ao carregar do Firestore:", error);
@@ -1000,6 +1174,43 @@
       }).join("");
     }
 
+    // ===== Módulos e matérias recolhidos por padrão; módulos liberados em sequência =====
+    const modulosAbertos = new Set();
+    const materiasAbertas = new Set();
+
+    function ehAdmin() {
+      const e = (currentUser || "").toLowerCase();
+      return e === "infosolucoesse@gmail.com" || e.startsWith("infosolucoesse+anderson@");
+    }
+
+    function moduloConcluido(m) {
+      const prog = getProgress();
+      const aulas = (m.materias || []).flatMap(x => x.lessons || []);
+      return aulas.length > 0 && aulas.every(l => (prog[l.id] || 0) >= 100);
+    }
+
+    // O 1º módulo é sempre livre; os demais só abrem quando o anterior está 100% concluído (administrador vê tudo)
+    function moduloLiberado(idx) {
+      if (ehAdmin() || idx === 0) return true;
+      return moduloConcluido(courseData[idx - 1]);
+    }
+
+    window.toggleModulo = (id) => {
+      const idx = courseData.findIndex(m => m.id === id);
+      if (idx < 0) return;
+      if (!moduloLiberado(idx)) {
+        alert(`🔒 ${courseData[idx].name} bloqueado!\n\nConclua todas as aulas do ${courseData[idx - 1].name} para liberar este módulo.`);
+        return;
+      }
+      if (modulosAbertos.has(id)) modulosAbertos.delete(id); else modulosAbertos.add(id);
+      renderModules();
+    };
+
+    window.toggleMateria = (id) => {
+      if (materiasAbertas.has(id)) materiasAbertas.delete(id); else materiasAbertas.add(id);
+      renderModules();
+    };
+
     window.renderModules = () => {
       let search = $("searchInput").value.toLowerCase().trim();
       let emailLower = currentUser?.toLowerCase() || "";
@@ -1007,7 +1218,9 @@
       let prog = getProgress();
       let html = "";
 
-      courseData.forEach(m => {
+      courseData.forEach((m, idx) => {
+        const liberado = moduloLiberado(idx);
+        const moduloAberto = liberado && (search ? true : modulosAbertos.has(m.id));
         let materiasHtml = "";
         let moduleHasMatches = false;
 
@@ -1049,10 +1262,14 @@
             provaBtnHtml = `<button class="action-btn ${liberada ? 'available' : ''}" style="white-space:nowrap;" onclick="abrirProvaAluno('${mat.id}')">${textoProva}</button>`;
           }
 
+          const matAberta = search ? true : materiasAbertas.has(mat.id);
+          const feitas = mat.lessons.filter(l => (prog[l.id] || 0) >= 100).length;
           materiasHtml += `
             <div class="materia-block">
-              <div class="materia-header" style="justify-content:space-between;"><span>📖 ${mat.title}</span>${provaBtnHtml}</div>
-              <div class="subjects-grid">${lessonsCardsHtml}</div>
+              <div class="materia-header" style="justify-content:space-between;">
+                <span class="materia-toggle" onclick="toggleMateria('${mat.id}')">${matAberta ? '▼' : '▶'} 📖 ${mat.title} <span class="materia-count">${feitas}/${mat.lessons.length} aulas concluídas</span></span>${provaBtnHtml}
+              </div>
+              ${matAberta ? `<div class="subjects-grid">${lessonsCardsHtml}</div>` : ''}
             </div>
           `;
         });
@@ -1069,17 +1286,17 @@
         }
 
         html += `
-          <div class="module ${search ? 'open' : ''}" id="mod-${m.id}">
+          <div class="module ${moduloAberto ? 'open' : ''} ${liberado ? '' : 'locked'}" id="mod-${m.id}">
             <div class="module-header-wrap">
-              <button class="module-toggle" onclick="document.getElementById('mod-${m.id}').classList.toggle('open')">
-                <span>📌 ${m.name}</span><span>▼</span>
+              <button class="module-toggle" onclick="toggleModulo(${m.id})">
+                <span>${liberado ? '📌' : '🔒'} ${m.name}${liberado ? '' : ' <span class="materia-count">bloqueado — conclua o módulo anterior</span>'}</span><span>${liberado ? (moduloAberto ? '▲' : '▼') : ''}</span>
               </button>
               <div class="module-actions">
                 ${livroBtnHtml}
               </div>
             </div>
             <div class="module-content">
-              ${materiasHtml}
+              ${liberado ? materiasHtml : ''}
             </div>
           </div>
         `;
