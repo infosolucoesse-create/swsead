@@ -1155,7 +1155,7 @@
       if (!a || a.modo === "padrao" || !a.modo) return "Padrão (em sequência)";
       if (a.modo === "todos") return "Todos os módulos";
       const nomes = courseData.filter(m => (a.modulos || []).includes(m.id)).map(m => m.name.replace("Módulo ", ""));
-      return nomes.length ? "Módulos: " + nomes.join(", ") : "Nenhum módulo";
+      return nomes.length ? "Módulos " + nomes.join(", ") + " (em sequência)" : "Nenhum módulo";
     }
 
     window.editarAcesso = (uid) => {
@@ -1281,20 +1281,34 @@
       return mods.flatMap(m => (m.materias || []).flatMap(x => x.lessons || []));
     }
 
-    // Padrão: o 1º módulo é livre e os demais abrem quando o anterior está 100% concluído.
-    // Com acesso definido pelo administrador: vale somente a lista de módulos liberados.
-    function moduloLiberado(idx) {
-      if (ehAdmin()) return true;
-      if (acessoAluno) {
-        if (acessoAluno.modo === "todos") return true;
-        return (acessoAluno.modulos || []).includes(courseData[idx].id);
+    // Módulo que o aluno precisa ter concluído antes deste (null = nenhum).
+    // Padrão: o módulo imediatamente anterior. Com módulos escolhidos: o anterior dentre os escolhidos.
+    function moduloAnteriorExigido(idx) {
+      const atual = courseData[idx];
+      if (acessoAluno && acessoAluno.modo === "modulos") {
+        const permitidos = courseData.filter(m => (acessoAluno.modulos || []).includes(m.id));
+        const pos = permitidos.findIndex(m => m.id === atual.id);
+        return pos > 0 ? permitidos[pos - 1] : null;
       }
-      if (idx === 0) return true;
-      return moduloConcluido(courseData[idx - 1]);
+      return idx > 0 ? courseData[idx - 1] : null;
     }
 
-    function motivoBloqueio() {
-      return acessoAluno ? "bloqueado — não liberado para o seu usuário" : "bloqueado — conclua o módulo anterior";
+    function moduloNaoLiberadoParaAluno(idx) {
+      return Boolean(acessoAluno) && acessoAluno.modo === "modulos"
+        && !(acessoAluno.modulos || []).includes(courseData[idx].id);
+    }
+
+    // Acesso "todos": tudo aberto. Padrão ou módulos escolhidos: abre em sequência, quando o anterior exigido está 100% concluído.
+    function moduloLiberado(idx) {
+      if (ehAdmin()) return true;
+      if (acessoAluno && acessoAluno.modo === "todos") return true;
+      if (moduloNaoLiberadoParaAluno(idx)) return false;
+      const anterior = moduloAnteriorExigido(idx);
+      return !anterior || moduloConcluido(anterior);
+    }
+
+    function motivoBloqueio(idx) {
+      return moduloNaoLiberadoParaAluno(idx) ? "bloqueado — não liberado para o seu usuário" : "bloqueado — conclua o módulo anterior";
     }
 
     // Campos de acesso (usados no cadastro e na edição pelo administrador)
@@ -1306,7 +1320,7 @@
           <label>Acesso aos módulos</label>
           <label class="opt"><input type="radio" name="acessoTipo" value="padrao" ${modo === "padrao" ? "checked" : ""}> Padrão: um módulo por vez, em sequência</label>
           <label class="opt"><input type="radio" name="acessoTipo" value="todos" ${modo === "todos" ? "checked" : ""}> Todos os módulos liberados</label>
-          <label class="opt"><input type="radio" name="acessoTipo" value="modulos" ${modo === "modulos" ? "checked" : ""}> Somente os módulos escolhidos:</label>
+          <label class="opt"><input type="radio" name="acessoTipo" value="modulos" ${modo === "modulos" ? "checked" : ""}> Somente os módulos escolhidos (liberados em sequência):</label>
           <div class="opt-mods">
             ${courseData.map(m => `<label class="opt"><input type="checkbox" name="acessoMod" value="${m.id}" ${mods.includes(m.id) ? "checked" : ""}> ${esc(m.name)}</label>`).join("")}
           </div>
@@ -1325,9 +1339,12 @@
       const idx = courseData.findIndex(m => m.id === id);
       if (idx < 0) return;
       if (!moduloLiberado(idx)) {
-        alert(acessoAluno
-          ? `🔒 ${courseData[idx].name} bloqueado!\n\nEste módulo não foi liberado para o seu usuário. Fale com a administração.`
-          : `🔒 ${courseData[idx].name} bloqueado!\n\nConclua todas as aulas do ${courseData[idx - 1].name} para liberar este módulo.`);
+        if (moduloNaoLiberadoParaAluno(idx)) {
+        alert(`🔒 ${courseData[idx].name} bloqueado!\n\nEste módulo não foi liberado para o seu usuário. Fale com a administração.`);
+      } else {
+        const anterior = moduloAnteriorExigido(idx);
+        alert(`🔒 ${courseData[idx].name} bloqueado!\n\nConclua todas as aulas do ${anterior.name} para liberar este módulo.`);
+      }
         return;
       }
       if (modulosAbertos.has(id)) modulosAbertos.delete(id); else modulosAbertos.add(id);
@@ -1417,7 +1434,7 @@
           <div class="module ${moduloAberto ? 'open' : ''} ${liberado ? '' : 'locked'}" id="mod-${m.id}">
             <div class="module-header-wrap">
               <button class="module-toggle" onclick="toggleModulo(${m.id})">
-                <span>${liberado ? '📌' : '🔒'} ${m.name}${liberado ? '' : ` <span class="materia-count">${motivoBloqueio()}</span>`}</span><span>${liberado ? (moduloAberto ? '▲' : '▼') : ''}</span>
+                <span>${liberado ? '📌' : '🔒'} ${m.name}${liberado ? '' : ` <span class="materia-count">${motivoBloqueio(idx)}</span>`}</span><span>${liberado ? (moduloAberto ? '▲' : '▼') : ''}</span>
               </button>
               <div class="module-actions">
                 ${livroBtnHtml}
