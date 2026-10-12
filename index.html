@@ -965,8 +965,12 @@
       $("userRoleTag").textContent = ehSuperAdmin() ? "Administrador geral" : (isAdmin ? "Administrador" : "Aluno");
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
       $("btnProgressoAlunos").style.display = isAdmin ? "inline-block" : "none";
-      await loadProgressFromCloud();
       await loadAcessoFromCloud();
+      if (!isAdmin && acessoRegistrado === false) {
+        mostrarAcessoNegado();
+        return;
+      }
+      await loadProgressFromCloud();
       await loadCourseDataFromCloud();
       updateOverallProgress();
     }
@@ -1128,15 +1132,18 @@
     window.showAdminProgress = async () => {
       openModal(`<h2>Progresso dos alunos</h2><p class="modal-subtitle" id="admStatus">Carregando...</p>`, "wide");
       try {
-        const acessos = {}, base = {};
+        const acessos = {}, base = {}, solic = {};
+        const comProgresso = new Set();
         if (ehSuperAdmin()) {
           await carregarAdminsLista();
-          const [snapP, snapA] = await Promise.all([
+          const [snapP, snapA, snapS] = await Promise.all([
             getDocs(collection(db, "progresso")),
-            getDocs(collection(db, "acessos"))
+            getDocs(collection(db, "acessos")),
+            getDocs(collection(db, "pendentes"))
           ]);
           snapA.forEach(d => { acessos[d.id] = d.data(); });
-          snapP.forEach(d => { base[d.id] = d.data(); });
+          snapP.forEach(d => { base[d.id] = d.data(); comProgresso.add(d.id); });
+          snapS.forEach(d => { solic[d.id] = d.data(); });
         } else {
           // Administrador comum: somente os alunos liberados para ele
           const snapA = await getDocs(query(collection(db, "acessos"), where("visivelPara", "array-contains", auth.currentUser.uid)));
@@ -1150,14 +1157,19 @@
         }
         // alunos criados pelo administrador que ainda não entraram também aparecem
         Object.keys(acessos).forEach(uid => { if (!base[uid]) base[uid] = { email: acessos[uid].email, aulas: {} }; });
+        // quem pediu acesso e ainda não foi autorizado também aparece
+        Object.keys(solic).forEach(uid => { if (!base[uid] && !acessos[uid]) base[uid] = { email: solic[uid].email, aulas: {}, atualizadoEm: solic[uid].criadoEm }; });
         adminRows = Object.entries(base).map(([uid, data]) => {
           const aulas = data.aulas || {};
           const acesso = acessos[uid] || null;
           const lessons = aulasVisiveis(acesso);
           const sum = lessons.reduce((a, l) => a + (aulas[l.id] || 0), 0);
           const email = data.email || acesso?.email || "";
+          // pendente: ainda sem registro de acesso (não conta o administrador geral, administradores comuns nem o próprio usuário)
+          const pendente = ehSuperAdmin() && !acesso && !adminsMap[uid] && !emailEhSuper(email) && uid !== auth.currentUser.uid;
           return {
             uid, email, nome: nomeDoEmail(email), acesso,
+            pendente, solicitacao: Boolean(solic[uid]), temProgresso: comProgresso.has(uid),
             visivelPara: acesso?.visivelPara || [],
             geral: lessons.length ? Math.round(sum / lessons.length) : 0,
             concluidas: lessons.filter(l => (aulas[l.id] || 0) >= 100).length,
@@ -1241,7 +1253,40 @@
       }
     };
 
+    // Libera o acesso padrão a todos os pendentes (botão do administrador geral; some quando não há pendentes)
+    window.autorizarPendentes = async () => {
+      if (!ehSuperAdmin()) return;
+      const pend = adminRows.filter(r => r.pendente);
+      if (!pend.length) return;
+      const nomes = pend.slice(0, 20).map(r => "• " + (r.email || r.nome)).join("\n");
+      const resto = pend.length > 20 ? `\n… e mais ${pend.length - 20}` : "";
+      if (!confirm(`Autorizar ${pend.length} usuário(s) com acesso padrão (módulos em sequência)?\n\n${nomes}${resto}\n\nConfira se todos são alunos do seminário.`)) return;
+      try {
+        await Promise.all(pend.map(async (r) => {
+          await setDoc(doc(db, "acessos", r.uid), { email: r.email, modo: "padrao", modulos: [], visivelPara: [], atualizadoEm: Date.now() });
+          try { await deleteDoc(doc(db, "pendentes", r.uid)); } catch (e) { /* limpeza opcional */ }
+        }));
+        showAdminProgress();
+      } catch (err) {
+        console.error("Erro ao autorizar pendentes:", err);
+        alert("Não foi possível autorizar. Confira se as regras do Firestore foram atualizadas.");
+      }
+    };
+
+    window.recusarPendente = async (uid) => {
+      if (!ehSuperAdmin()) return;
+      if (!confirm("Remover este pedido de acesso da lista?")) return;
+      try {
+        await deleteDoc(doc(db, "pendentes", uid));
+        showAdminProgress();
+      } catch (err) {
+        console.error("Erro ao remover o pedido:", err);
+        alert("Não foi possível remover o pedido.");
+      }
+    };
+
     function renderAdminShell() {
+      const pend = adminRows.filter(r => r.pendente).length;
       $("modalContent").innerHTML = `
         <div class="adm-top">
           <div>
@@ -1250,6 +1295,7 @@
           </div>
           <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
         </div>
+        ${pend ? `<div style="margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><button class="btn btn-primary" onclick="autorizarPendentes()">Autorizar ${pend} pendente(s)</button><span class="modal-subtitle" style="margin:0;">Libera o acesso padrão. Para outro acesso, use "Alterar acesso" na linha do aluno.</span></div>` : ""}
         <input type="text" class="search-bar" style="width:100%; margin-top:14px;" placeholder="Buscar aluno..." oninput="filtrarAdmin(this.value)">
         <div class="adm-wrap">
           <table class="adm-table">
@@ -1291,7 +1337,7 @@
             <td><strong>${r.geral}%</strong><div class="adm-bar"><div style="width:${r.geral}%"></div></div></td>
             <td>${r.concluidas}</td>
             <td>${r.andamento}</td>
-            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Alterar acesso</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
+            <td>${esc(r.pendente ? "Aguardando autorização" : textoAcesso(r.acesso))}${souGeral && !r.pendente ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">${r.pendente ? "Autorizar com acesso…" : "Alterar acesso"}</button>${r.pendente && r.solicitacao && !r.temProgresso ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); recusarPendente('${esc(r.uid)}')">Recusar</button>` : ""}${souGeral && !r.pendente ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
             <td>${quando}</td>
           </tr>
           <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="6" class="adm-detail">${detalhe}</td></tr>`;
@@ -1306,9 +1352,12 @@
     let papelSubAdmin = false;
     let adminsMap = {};   // uid -> { email }  (carregado pelo administrador geral)
 
+    const EMAILS_SUPER = ["infosolucoesse@gmail.com", "infosolucoesse+anderson@gmail.com"];
+    function emailEhSuper(e) {
+      return EMAILS_SUPER.includes((e || "").toLowerCase());
+    }
     function ehSuperAdmin() {
-      const e = (currentUser || "").toLowerCase();
-      return e === "infosolucoesse@gmail.com" || e === "infosolucoesse+anderson@gmail.com";
+      return emailEhSuper(currentUser);
     }
 
     function ehAdmin() {
@@ -1362,14 +1411,33 @@
 
     // Acesso definido pelo administrador para este aluno (null = padrão: módulos em sequência)
     let acessoAluno = null;
+    let acessoRegistrado = null;   // true/false; null = não foi possível verificar
 
     async function loadAcessoFromCloud() {
       acessoAluno = null;
+      acessoRegistrado = null;
       try {
         const snap = await getDoc(doc(db, "acessos", auth.currentUser.uid));
+        acessoRegistrado = snap.exists();
         if (snap.exists() && snap.data().modo && snap.data().modo !== "padrao") acessoAluno = snap.data();
       } catch (err) {
         console.error("Erro ao carregar o acesso do aluno:", err);
+      }
+    }
+
+    // Usuário sem registro de acesso: não vê o curso e fica na lista de pendentes do administrador geral
+    async function mostrarAcessoNegado() {
+      $("mainContainer").classList.remove("active");
+      document.body.style.justifyContent = "center";
+      openModal(`
+        <h2>Acesso não liberado</h2>
+        <p class="modal-subtitle">Seu usuário ainda não foi liberado para este curso. Procure a administração do seminário.</p>
+        <button class="btn btn-danger" style="width:100%;" onclick="handleLogout()">Sair</button>
+      `, "login");
+      try {
+        await setDoc(doc(db, "pendentes", auth.currentUser.uid), { email: currentUser, criadoEm: Date.now() }, { merge: true });
+      } catch (err) {
+        console.error("Não foi possível registrar a solicitação de acesso:", err);
       }
     }
 
