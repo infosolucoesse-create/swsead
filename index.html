@@ -919,6 +919,9 @@
       const email = resolveEmail(rawInput);
       const senha = $("np").value.trim();
       const acesso = lerAcessoDoForm();
+      // Valida módulos: só aceita IDs que existem no curso
+      const idsValidos = courseData.map(m => m.id);
+      acesso.modulos = (acesso.modulos || []).filter(id => idsValidos.includes(id));
       if (acesso.modo === "modulos" && !acesso.modulos.length) {
         alert("Escolha ao menos um módulo para liberar.");
         return;
@@ -1047,6 +1050,7 @@
     const progressRef = () => doc(db, "progresso", auth.currentUser.uid);
 
     async function loadProgressFromCloud() {
+      if (!auth.currentUser) return;
       let local = {};
       try { local = JSON.parse(localStorage.getItem(`progress_${currentUser}`) || "{}"); } catch {}
 
@@ -1065,8 +1069,10 @@
         merged[id] = Math.max(merged[id] || 0, v);
       }
       // O progresso da aula provisória antiga passa para o Capítulo 1 correspondente
+      // e a chave antiga é REMOVIDA para não deixar lixo.
       for (const [antigo, novoId] of Object.entries(AULA_PROVISORIA_PARA)) {
         if ((merged[antigo] || 0) > (merged[novoId] || 0)) merged[novoId] = merged[antigo];
+        delete merged[antigo];
       }
       progressCache = merged;
 
@@ -1097,7 +1103,8 @@
       progressDirty = true;
       if (!progressTimer) progressTimer = setTimeout(flushProgress, 5000);
       updateOverallProgress();
-      renderModules();
+      // Não chamamos renderModules() aqui: durante o vídeo, a lista inteira é
+      // reconstruída apenas quando o player fecha ou pausa.
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -1138,17 +1145,30 @@
           snapA.forEach(d => { acessos[d.id] = d.data(); });
           snapP.forEach(d => { base[d.id] = d.data(); });
         } else {
-          // Administrador comum: somente os alunos liberados para ele
-          const snapA = await getDocs(query(collection(db, "acessos"), where("visivelPara", "array-contains", auth.currentUser.uid)));
-          snapA.forEach(d => { acessos[d.id] = d.data(); });
+          // Administrador comum: somente os alunos liberados para ele.
+          // A regra do Firebase autoriza esta query específica (array-contains no próprio UID).
+          try {
+            const snapA = await getDocs(query(
+              collection(db, "acessos"),
+              where("visivelPara", "array-contains", auth.currentUser.uid)
+            ));
+            snapA.forEach(d => { acessos[d.id] = d.data(); });
+          } catch (err) {
+            console.error("Erro ao listar alunos do coordenador:", err);
+          }
+          // Lê o progresso de cada aluno individualmente (à prova de falhas).
+          // Se o aluno nunca logou, o progresso simplesmente não existe — o preenchimento
+          // abaixo cria um registro vazio (aulas: {}) e ele aparece com 0%.
           await Promise.all(Object.keys(acessos).map(async (uid) => {
             try {
               const sp = await getDoc(doc(db, "progresso", uid));
               if (sp.exists()) base[uid] = sp.data();
-            } catch (e) { console.error("Erro ao ler progresso de um aluno:", e); }
+            } catch (e) {
+              console.error("Erro ao ler progresso do aluno", uid, e);
+            }
           }));
         }
-        // alunos criados pelo administrador que ainda não entraram também aparecem
+        // Alunos criados pelo administrador que ainda não entraram também aparecem (0%).
         Object.keys(acessos).forEach(uid => { if (!base[uid]) base[uid] = { email: acessos[uid].email, aulas: {} }; });
         adminRows = Object.entries(base).map(([uid, data]) => {
           const aulas = data.aulas || {};
@@ -1203,6 +1223,8 @@
       $("formAcesso").addEventListener("submit", async (e) => {
         e.preventDefault();
         const acesso = lerAcessoDoForm();
+        const idsValidos = courseData.map(m => m.id);
+        acesso.modulos = (acesso.modulos || []).filter(id => idsValidos.includes(id));
         if (acesso.modo === "modulos" && !acesso.modulos.length) {
           alert("Escolha ao menos um módulo para liberar.");
           return;
@@ -1571,6 +1593,8 @@
     window.closePlayer = () => {
       flushProgress();
       if (progressInterval) clearInterval(progressInterval);
+      // Cancela o alarme pendente de salvar o progresso
+      if (progressTimer) { clearTimeout(progressTimer); progressTimer = null; }
       if (ytPlayer && typeof ytPlayer.destroy === 'function') {
         ytPlayer.destroy();
         ytPlayer = null;
@@ -1580,6 +1604,8 @@
       activeSubjectId = null;
       maxWatchedTime = 0;
       currentVideoLoadedId = null;
+      // Reconstrói a lista uma última vez, agora que o vídeo fechou
+      renderModules();
     };
 
     window.openSubject = (subId) => {
@@ -1648,12 +1674,15 @@
             } else if (event.data === YT.PlayerState.PAUSED) {
               if (progressInterval) clearInterval(progressInterval);
               flushProgress();
+              // Ao pausar, atualizamos a lista completa (progresso refletido)
+              renderModules();
             } else if (event.data === YT.PlayerState.ENDED) {
               if (progressInterval) clearInterval(progressInterval);
               if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
               if ($("simSlider")) $("simSlider").value = 100;
               setProgress(subId, 100);
               flushProgress();
+              renderModules();
             }
           }
         }
@@ -1691,6 +1720,7 @@
 
         const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
         
+        // Atualiza APENAS o texto do percentual do vídeo, sem re-renderizar a lista
         if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
         if ($("simSlider")) $("simSlider").value = percent;
 
