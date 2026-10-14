@@ -256,6 +256,7 @@
         name: "Módulo I",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           {
             id: "mat_teo",
@@ -316,6 +317,7 @@
         name: "Módulo II",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           {
             id: "mat_m2_1", title: "Introdução Bíblica",
@@ -368,6 +370,7 @@
         name: "Módulo III",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           {
             id: "mat_m3_1", title: "Geografia Bíblica",
@@ -440,6 +443,7 @@
         name: "Módulo IV",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           {
             id: "mat_m4_1", title: "Hermenêutica",
@@ -493,6 +497,7 @@
         name: "Módulo V",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           { id: "mat_m5_1", title: "Antropologia", lessons: [
               { id: "m5_1_intro", name: "Introdução", playlist: null },
@@ -535,6 +540,7 @@
         name: "Módulo VI",
         provaUrl: null,
         livroUrl: null,
+        cadernoUrl: null,
         materias: [
           { id: "mat_m6_1", title: "Escatologia", lessons: [
               { id: "m6_1_intro", name: "Introdução", playlist: null },
@@ -635,6 +641,15 @@
         return;
       }
       window.open(mod.livroUrl, "_blank");
+    };
+
+    window.abrirCadernoAluno = (modId) => {
+      let mod = courseData.find(m => m.id === modId);
+      if (!mod || !mod.cadernoUrl) {
+        alert("O caderno deste módulo ainda não está disponível.");
+        return;
+      }
+      window.open(mod.cadernoUrl, "_blank");
     };
 
     window.abrirProvaAluno = (matId) => {
@@ -868,6 +883,30 @@
       $("btnDeleteLivro").addEventListener("click", () => handleDeleteLivro(modId));
     };
 
+    window.showCadernoModal = (modId) => {
+      if (!ehSuperAdmin()) return;
+      let mod = courseData.find(m => m.id === modId);
+      openModal(`
+        <h2>Editar Caderno (Google Forms)</h2>
+        <p class="modal-subtitle">${mod ? mod.name : ''}</p>
+        <form id="formCaderno">
+          <div class="form-group">
+            <label>Link do Caderno (Google Forms)</label>
+            <input type="url" id="cLink" value="${mod?.cadernoUrl || ''}" placeholder="https://forms.gle/..." required>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit">💾 Salvar Caderno</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-danger" type="button" id="btnDeleteCaderno" style="flex:1;">🗑 Remover Caderno</button>
+              <button class="btn btn-secondary" type="button" onclick="closeModal()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+        </form>
+      `);
+      $("formCaderno").addEventListener("submit", (e) => handleSaveCaderno(e, modId));
+      $("btnDeleteCaderno").addEventListener("click", () => handleDeleteCaderno(modId));
+    };
+
     window.showProvaModal = (matId) => {
       if (!ehSuperAdmin()) return;
       const mat = findMateria(matId);
@@ -1018,6 +1057,27 @@
       let mod = courseData.find(m => m.id === modId);
       if (mod) {
         mod.livroUrl = null;
+      }
+      await saveCourseData();
+      closeModal();
+    }
+
+    async function handleSaveCaderno(e, modId) {
+      e.preventDefault();
+      let val = $("cLink").value.trim();
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.cadernoUrl = val || null;
+      }
+      await saveCourseData();
+      closeModal();
+    }
+
+    async function handleDeleteCaderno(modId) {
+      if (!confirm("Remover o link do caderno deste módulo?")) return;
+      let mod = courseData.find(m => m.id === modId);
+      if (mod) {
+        mod.cadernoUrl = null;
       }
       await saveCourseData();
       closeModal();
@@ -1551,6 +1611,15 @@
           livroBtnHtml = `<button class="action-btn ${livroClasse}" style="white-space:nowrap;" onclick="abrirLivroAluno(${m.id})">📚 Livro</button>`;
         }
 
+        // Botão do Caderno, ao lado do Livro (mesma lógica: só o administrador geral edita; todos os alunos acessam)
+        let cadernoBtnHtml = "";
+        if (isAdmin) {
+          cadernoBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showCadernoModal(${m.id})">⚙️ Caderno</button>`;
+        } else {
+          let cadernoClasse = m.cadernoUrl ? 'available' : '';
+          cadernoBtnHtml = `<button class="action-btn ${cadernoClasse}" style="white-space:nowrap;" onclick="abrirCadernoAluno(${m.id})">📓 Caderno</button>`;
+        }
+
         html += `
           <div class="module ${moduloAberto ? 'open' : ''} ${liberado ? '' : 'locked'}" id="mod-${m.id}">
             <div class="module-header-wrap">
@@ -1559,6 +1628,7 @@
               </button>
               <div class="module-actions">
                 ${livroBtnHtml}
+                ${cadernoBtnHtml}
               </div>
             </div>
             <div class="module-content">
