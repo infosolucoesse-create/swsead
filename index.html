@@ -1134,7 +1134,12 @@
         if ((merged[antigo] || 0) > (merged[novoId] || 0)) merged[novoId] = merged[antigo];
         delete merged[antigo];
       }
+      // Corrige aulas que ficaram travadas em 99% por arredondamento: passam a 100%
+      for (const [id, v] of Object.entries(merged)) {
+        if (v >= 99 && v < 100) merged[id] = 100;
+      }
       progressCache = merged;
+      localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progressCache));
 
       if (cloudOk) {
         progressDirty = true;
@@ -1645,6 +1650,8 @@
     let pendingSubjectId = null;
     let maxWatchedTime = 0;
     let currentVideoLoadedId = null;
+    const TOLERANCIA_FIM_SEG = 3; // segundos finais que não precisam ser assistidos para concluir
+    let modoRevisao = false; // true quando a aula já foi concluída (100%) e a aluna quer rever
 
     if (!window.YT) {
       let tag = document.createElement('script');
@@ -1660,6 +1667,12 @@
       }
     };
 
+    // ytPlayer.destroy() remove o <div id="player"> do HTML; sem recriá-lo, a próxima aula abre com tela branca
+    function recriarContainerPlayer() {
+      const wrap = document.querySelector("#playerArea .video-container");
+      if (wrap) wrap.innerHTML = '<div id="player"></div>';
+    }
+
     window.closePlayer = () => {
       flushProgress();
       if (progressInterval) clearInterval(progressInterval);
@@ -1670,10 +1683,11 @@
         ytPlayer = null;
       }
       if ($("playerArea")) $("playerArea").classList.remove("active");
-      if ($("player")) $("player").innerHTML = "";
+      recriarContainerPlayer();
       activeSubjectId = null;
       maxWatchedTime = 0;
       currentVideoLoadedId = null;
+      modoRevisao = false;
       // Reconstrói a lista uma última vez, agora que o vídeo fechou
       renderModules();
     };
@@ -1693,6 +1707,7 @@
       }
 
       closePlayer();
+      recriarContainerPlayer();
       activeSubjectId = subId;
       if ($("playerArea")) $("playerArea").classList.add("active");
       if ($("playerTitle")) $("playerTitle").textContent = `Assistindo: ${sub.materiaTitle} - ${sub.name}`;
@@ -1701,6 +1716,8 @@
       
       const prog = getProgress();
       const currentSavedPercent = prog[subId] || 0;
+      // Aula já concluída: reassiste desde o início, sem travas e sem alterar o progresso
+      modoRevisao = currentSavedPercent >= 100;
 
       let playerVars = {
         autoplay: 1,
@@ -1719,7 +1736,9 @@
         events: {
           'onReady': (event) => {
             const duration = ytPlayer.getDuration();
-            if (duration > 0 && currentSavedPercent > 0) {
+            if (modoRevisao) {
+              maxWatchedTime = 0;
+            } else if (duration > 0 && currentSavedPercent > 0) {
               maxWatchedTime = (currentSavedPercent / 100) * duration;
               ytPlayer.seekTo(maxWatchedTime, true);
             } else {
@@ -1772,6 +1791,13 @@
 
         if (!duration || duration === 0) return;
 
+        // Revisão de aula concluída: o aluno pode assistir e navegar livremente
+        if (modoRevisao) {
+          if ($("simPercentText")) $("simPercentText").textContent = `100% assistido`;
+          if ($("simSlider")) $("simSlider").value = 100;
+          return;
+        }
+
         const currentSavedPercent = getProgress()[subId] || 0;
         if (maxWatchedTime === 0 && currentSavedPercent > 0) {
           maxWatchedTime = (currentSavedPercent / 100) * duration;
@@ -1788,7 +1814,12 @@
           maxWatchedTime = currentTime;
         }
 
-        const percent = Math.min(100, Math.floor((maxWatchedTime / duration) * 100));
+        // Os últimos segundos contam como assistidos (créditos finais / arredondamento do player).
+        // Sem isso, a aula podia ficar parada em 99%.
+        const restante = duration - maxWatchedTime;
+        const percent = restante <= TOLERANCIA_FIM_SEG
+          ? 100
+          : Math.min(99, Math.floor((maxWatchedTime / duration) * 100));
         
         // Atualiza APENAS o texto do percentual do vídeo, sem re-renderizar a lista
         if ($("simPercentText")) $("simPercentText").textContent = `${percent}% assistido`;
