@@ -837,6 +837,7 @@
         <form id="formRegister">
           <div class="form-group"><label>Nome de Usuário ou E-mail</label><input type="text" id="nu" placeholder="Ex: marcos ou aluno@exemplo.com" required></div>
           <div class="form-group"><label>Senha Inicial</label><input type="password" id="np" placeholder="Mínimo 6 caracteres" required minlength="6"></div>
+          ${dadosAlunoFormHtml(null, true)}
           ${acessoFormHtml(null)}
           ${visibilidadeHtml([])}
           <div style="display:flex; gap:10px; margin-top:10px;">
@@ -972,6 +973,7 @@
       const email = resolveEmail(rawInput);
       const senha = $("np").value.trim();
       const acesso = lerAcessoDoForm();
+      const dados = lerDadosAlunoDoForm();
       // Valida módulos: só aceita IDs que existem no curso
       const idsValidos = courseData.map(m => m.id);
       acesso.modulos = (acesso.modulos || []).filter(id => idsValidos.includes(id));
@@ -992,7 +994,7 @@
         return;
       }
       try {
-        await setDoc(doc(db, "acessos", uid), { email, ...acesso, visivelPara, atualizadoEm: Date.now() });
+        await setDoc(doc(db, "acessos", uid), { email, ...dados, ...acesso, visivelPara, atualizadoEm: Date.now() });
         alert(`Usuário '${rawInput}' cadastrado com sucesso!`);
         closeModal();
       } catch (error) {
@@ -1202,8 +1204,53 @@
     // ===== PAINEL DO ADMINISTRADOR: progresso dos alunos =====
     const esc = (t) => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+    // Dados dos alunos por e-mail de acesso (fonte: relatório do seminário).
+    // Para um aluno novo aparecer completo, inclua uma linha aqui: "email": { nome, igreja, cargo, tel },
+    const DADOS_ALUNOS = {
+      "joseaugustosantosfilho179@gmail.com": { nome: "José Augusto", igreja: "Cedro Sede (SE)", cargo: "Diácono", tel: "(79) 9607-5565" },
+      "dantasandreia032@gmail.com": { nome: "Andreia", igreja: "Igreja Unida da Colina (SE)", cargo: "Cooperadora", tel: "(79) 98835-9014" },
+      "edilenefreire8691@gmail.com": { nome: "Edilene", igreja: "Igreja Unida da Colina (SE)", cargo: "Cooperadora", tel: "(79) 8862-8238" },
+      "edilenerfreire8691@gmail.com": { nome: "Edilene", igreja: "Igreja Unida da Colina (SE)", cargo: "Cooperadora", tel: "(79) 8862-8238" },
+      "cassioamigodedeus1092@hotmail.com": { nome: "Cássio", igreja: "Igreja Unida Conjunto Jardim / Jardim 3 (SE)", cargo: "Evangelista", tel: "(79) 98143-7134" },
+      "oliveirafelipe1628@gmail.com": { nome: "Evanildo Felipe de Oliveira", igreja: "Igreja Unida Conjunto Jardim / Jardim 3 (SE)", cargo: "Cooperador", tel: "(79) 98118-3300" },
+      "marcosandrey1999@outlook.com": { nome: "Marcos André", igreja: "Igreja Unida Conjunto Jardim / Jardim 3 (SE)", cargo: "Músico", tel: "(79) 99967-6796" },
+      "ferreirapaixao2@gmail.com": { nome: "Maria Auxiliadora", igreja: "Igreja Unida Conjunto Jardim / Jardim 3 (SE)", cargo: "Missionária", tel: "(79) 8133-4691" },
+      "reniltonalvesdossantosa9@gmail.com": { nome: "Renilton Alves dos Santos", igreja: "Igreja Unida Conjunto Jardim / Jardim 3 (SE)", cargo: "Membro", tel: "(79) 9195-2867" },
+      "jf1738128@gmail.com": { nome: "Jeane Araujo", igreja: "Igreja Unida de Junqueiro (AL)", cargo: "Secretária / Salinha", tel: "(82) 9139-8316" },
+      "santojose2001@gmail.com": { nome: "José Tallyos Santos Silva", igreja: "Igreja Unida de Junqueiro (AL)", cargo: "Líder Jovens / Adol.", tel: "(82) 99600-5169" },
+      "j.israelsds@gmail.com": { nome: "José Israel Santos da Silva", igreja: "Igreja Unida Paraíso do Sul (SE)", cargo: "Membro", tel: "(79) 8168-5181" },
+      "regina.clara755@gmail.com": { nome: "Clara Regina", igreja: "AD Brás Madureira Pai André (SE)", cargo: "Missionária", tel: "(79) 98102-7484" },
+      "lohanna1919@gmail.com": { nome: "Layza", igreja: "Igreja Unida Aquidabã (SE)", cargo: "Diaconisa", tel: "(79) 9602-3095" },
+      "marcosemanuell55163@gmail.com": { nome: "Marcos Antônio", igreja: "Igreja Unida Fernando Collor (SE)", cargo: "Evangelista", tel: "(79) 8853-8933" },
+      "rilvanira@outlook.com": { nome: "Rilvanira Batista", igreja: "Igreja Unida Maria do Carmo (SE)", cargo: "Evangelista", tel: "(79) 99953-2283" },
+      "jadsonadj16@gmail.com": { nome: "Jadson Alves", igreja: "Igreja Unida Marivan Sul (SE)", cargo: "Pastor", tel: "(79) 99159-4624" },
+      "jardimeletrodomestico321@gmail.com": { nome: "Márcio", igreja: "Igreja Unida Parque dos Faróis (SE)", cargo: "Evangelista / Dirigente", tel: "(79) 9 9899-1957" },
+      "kledsonsouza515@gmail.com": { nome: "Kledson", igreja: "São Sebastião / Cedro (SE)", cargo: "Membro", tel: "(79) 9858-1855" },
+      "valteraugustosilva22@gmail.com": { nome: "Valter Augusto", igreja: "Igreja Unida São Conrado (SE)", cargo: "Membro", tel: "(79) 9952-6045" },
+      "walissonwagner26@gmail.com": { nome: "Wallysson", igreja: "Igreja Unida São Conrado (SE)", cargo: "Mídia", tel: "(79) 9656-6232" },
+      "denicris01@gmail.com": { nome: "Denilza Cristina", igreja: "Igreja Unida São Conrado (SE)", cargo: "Membra", tel: "(79) 99990-2814" },
+      "kmdf.ester@gmail.com": { nome: "Kauã Maxwell", igreja: "Igreja Unida Cedro (SE)", cargo: "Membro", tel: "(79) 99901-0414" }
+    };
+
+    function infoDoEmail(email) {
+      return DADOS_ALUNOS[(email || "").trim().toLowerCase()] || null;
+    }
+
+    // Dados salvos no banco têm prioridade; a lista acima serve de reserva para os alunos antigos.
+    function dadosDoAluno(email, acesso) {
+      const f = infoDoEmail(email) || {};
+      return {
+        nome: acesso?.nome || f.nome || "",
+        igreja: acesso?.igreja ?? f.igreja ?? "",
+        cargo: acesso?.cargo ?? f.cargo ?? "",
+        tel: acesso?.telefone ?? f.tel ?? ""
+      };
+    }
+
     function nomeDoEmail(email) {
       if (!email) return "(sem e-mail ainda)";
+      const conhecido = infoDoEmail(email);
+      if (conhecido) return conhecido.nome;
       const m = email.match(/^infosolucoesse\+(.+)@gmail\.com$/i);
       if (!m) return email;
       return m[1].charAt(0).toUpperCase() + m[1].slice(1);
@@ -1255,8 +1302,9 @@
           const lessons = aulasVisiveis(acesso);
           const sum = lessons.reduce((a, l) => a + (aulas[l.id] || 0), 0);
           const email = data.email || acesso?.email || "";
+          const dados = dadosDoAluno(email, acesso);
           return {
-            uid, email, nome: nomeDoEmail(email), acesso,
+            uid, email, nome: dados.nome || nomeDoEmail(email), info: (dados.igreja || dados.cargo || dados.tel) ? dados : null, acesso,
             visivelPara: acesso?.visivelPara || [],
             geral: lessons.length ? Math.round(sum / lessons.length) : 0,
             concluidas: lessons.filter(l => (aulas[l.id] || 0) >= 100).length,
@@ -1288,9 +1336,10 @@
       const r = adminRows.find(x => x.uid === uid);
       if (!r) return;
       openModal(`
-        <h2>Acesso aos módulos</h2>
-        <p class="modal-subtitle">${esc(r.nome)}${r.email && r.nome !== r.email ? " — " + esc(r.email) : ""}</p>
+        <h2>Editar aluno</h2>
+        <p class="modal-subtitle">${esc(r.email || r.nome)}</p>
         <form id="formAcesso">
+          ${dadosAlunoFormHtml({ nome: (r.nome !== r.email && r.email) ? r.nome : "", igreja: r.info?.igreja, cargo: r.info?.cargo, tel: r.info?.tel }, false)}
           ${acessoFormHtml(r.acesso)}
           ${visibilidadeHtml(r.visivelPara)}
           <div style="display:flex; gap:10px; margin-top:10px;">
@@ -1302,16 +1351,17 @@
       $("formAcesso").addEventListener("submit", async (e) => {
         e.preventDefault();
         const acesso = lerAcessoDoForm();
+        const cadastro = lerDadosAlunoDoForm();
         const idsValidos = courseData.map(m => m.id);
         acesso.modulos = (acesso.modulos || []).filter(id => idsValidos.includes(id));
         if (acesso.modo === "modulos" && !acesso.modulos.length) {
           alert("Escolha ao menos um módulo para liberar.");
           return;
         }
-        // Administrador comum altera só o acesso aos módulos; quem vê o aluno é definido pelo administrador geral
+        // Administrador comum altera os dados e o acesso; quem vê o aluno é definido pelo administrador geral
         const dados = ehSuperAdmin()
-          ? { email: r.email, ...acesso, visivelPara: lerVisibilidadeDoForm(), atualizadoEm: Date.now() }
-          : { ...acesso, atualizadoEm: Date.now() };
+          ? { email: r.email, ...cadastro, ...acesso, visivelPara: lerVisibilidadeDoForm(), atualizadoEm: Date.now() }
+          : { ...cadastro, ...acesso, atualizadoEm: Date.now() };
         try {
           await setDoc(doc(db, "acessos", uid), dados, { merge: true });
           showAdminProgress();
@@ -1349,9 +1399,13 @@
             <h2>Progresso dos alunos</h2>
             <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.length} aluno(s) ${ehSuperAdmin() ? "registrado(s)" : "liberado(s) para você"}. Clique em um aluno para ver as aulas.</p>
           </div>
-          <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="exportarTodosPdf()">⬇ Exportar todos (PDF)</button>
+            <button class="btn btn-secondary" onclick="exportarTodos()">⬇ Exportar todos (CSV)</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+          </div>
         </div>
-        <input type="text" class="search-bar" style="width:100%; margin-top:14px;" placeholder="Buscar aluno..." oninput="filtrarAdmin(this.value)">
+        <input type="text" class="search-bar" style="width:100%; margin-top:14px;" placeholder="Buscar por nome, e-mail, igreja, cargo ou telefone..." oninput="filtrarAdmin(this.value)">
         <div class="adm-wrap">
           <table class="adm-table">
             <thead><tr><th>Aluno</th><th>Progresso</th><th>Concluídas</th><th>Em andamento</th><th>Acesso</th><th>Última atividade</th></tr></thead>
@@ -1363,6 +1417,251 @@
       renderAdminRows("");
     }
 
+    // ===== Exportação (CSV com separador ";" e acentos corretos no Excel) =====
+    function csvCelula(v) {
+      let t = String(v ?? "");
+      // evita que o Excel interprete o texto como fórmula
+      if (/^[=+\-@]/.test(t) && !/^\+?\d[\d\s().-]*$/.test(t)) t = "'" + t;
+      return /[";\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }
+
+    function baixarCsv(nomeArquivo, linhas) {
+      const csv = "\uFEFF" + linhas.map(l => l.map(csvCelula).join(";")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    function quandoTexto(ts) {
+      return ts ? new Date(ts).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+    }
+
+    function dataArquivo() { return new Date().toISOString().slice(0, 10); }
+
+    function nomeArquivoSeguro(t) {
+      return String(t || "aluno").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase() || "aluno";
+    }
+
+    window.exportarTodos = () => {
+      if (!adminRows.length) { alert("Não há alunos para exportar."); return; }
+      const linhas = [["Nome", "E-mail", "Igreja", "Cargo / Função", "Telefone / WhatsApp", "Progresso (%)", "Aulas concluídas", "Aulas em andamento", "Acesso", "Última atividade"]];
+      [...adminRows].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(r => {
+        linhas.push([r.nome, r.email, r.info?.igreja, r.info?.cargo, r.info?.tel, r.geral, r.concluidas, r.andamento, textoAcesso(r.acesso), quandoTexto(r.ultimo)]);
+      });
+      baixarCsv(`alunos_sws_${dataArquivo()}.csv`, linhas);
+    };
+
+    window.exportarAluno = (uid) => {
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      const linhas = [
+        ["Nome", r.nome],
+        ["E-mail", r.email],
+        ["Igreja", r.info?.igreja],
+        ["Cargo / Função", r.info?.cargo],
+        ["Telefone / WhatsApp", r.info?.tel],
+        ["Progresso geral (%)", r.geral],
+        ["Aulas concluídas", r.concluidas],
+        ["Aulas em andamento", r.andamento],
+        ["Acesso", textoAcesso(r.acesso)],
+        ["Última atividade", quandoTexto(r.ultimo)],
+        [],
+        ["Módulo", "Matéria", "Aula", "Progresso (%)", "Situação"]
+      ];
+      const visiveis = new Set(aulasVisiveis(r.acesso).map(l => l.id));
+      courseData.forEach(m => m.materias?.forEach(mat => mat.lessons?.forEach(l => {
+        if (!visiveis.has(l.id)) return;
+        const v = r.aulas[l.id] || 0;
+        linhas.push([m.name, mat.title, l.name, v, v >= 100 ? "Concluída" : v > 0 ? "Em andamento" : "Não iniciada"]);
+      })));
+      baixarCsv(`aluno_${nomeArquivoSeguro(r.nome)}_${dataArquivo()}.csv`, linhas);
+    };
+
+    // ===== Exportação em PDF (jsPDF + AutoTable, carregados só quando necessário) =====
+    const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    const AUTOTABLE_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+    let pdfLibPronta = null;
+
+    function carregarScript(src) {
+      return new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = src;
+        el.onload = resolve;
+        el.onerror = () => reject(new Error("Falha ao carregar " + src));
+        document.head.appendChild(el);
+      });
+    }
+
+    function garantirPdfLib() {
+      if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+      if (!pdfLibPronta) {
+        pdfLibPronta = carregarScript(JSPDF_URL).then(() => carregarScript(AUTOTABLE_URL)).catch(err => { pdfLibPronta = null; throw err; });
+      }
+      return pdfLibPronta;
+    }
+
+    const PDF_AZUL = [26, 68, 173];
+
+    function pdfCabecalho(doc, subtitulo) {
+      const w = doc.internal.pageSize.getWidth();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(...PDF_AZUL);
+      doc.text("SEMINÁRIO EAD - SWS", w / 2, 16, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text(subtitulo, w / 2, 22, { align: "center" });
+      doc.setDrawColor(...PDF_AZUL);
+      doc.setLineWidth(0.6);
+      doc.line(14, 26, w - 14, 26);
+    }
+
+    function pdfRodape(doc) {
+      const n = doc.getNumberOfPages();
+      const w = doc.internal.pageSize.getWidth();
+      const h = doc.internal.pageSize.getHeight();
+      const quando = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      for (let i = 1; i <= n; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.setDrawColor(...PDF_AZUL);
+        doc.setLineWidth(0.3);
+        doc.line(14, h - 12, w - 14, h - 12);
+        doc.text("Gerado em " + quando, 14, h - 7);
+        doc.text("Página " + i + " de " + n, w - 14, h - 7, { align: "right" });
+      }
+    }
+
+    window.exportarTodosPdf = async () => {
+      if (!adminRows.length) { alert("Não há alunos para exportar."); return; }
+      try {
+        await garantirPdfLib();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        pdfCabecalho(doc, "Curso Básico de Teologia — Relatório Acadêmico de Alunos e Progresso");
+
+        // agrupa por igreja (alunos sem igreja informada ficam no fim)
+        const SEM = "Igreja não informada";
+        const grupos = {};
+        adminRows.forEach(r => { const ig = (r.info?.igreja || "").trim() || SEM; (grupos[ig] = grupos[ig] || []).push(r); });
+        const nomesGrupos = Object.keys(grupos).sort((a, b) => a === SEM ? 1 : b === SEM ? -1 : a.localeCompare(b));
+
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        doc.text(`Total de alunos: ${adminRows.length}   |   Igrejas: ${nomesGrupos.filter(g => g !== SEM).length}`, 14, 33);
+
+        const corpo = [];
+        let n = 0;
+        nomesGrupos.forEach(g => {
+          corpo.push([{ content: `${g} (${grupos[g].length})`, colSpan: 8, styles: { fillColor: PDF_AZUL, textColor: 255, fontStyle: "bold", halign: "left" } }]);
+          grupos[g].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(r => {
+            n++;
+            corpo.push([String(n).padStart(2, "0"), r.nome, r.info?.cargo || "—", r.info?.tel || "—", r.email || "—", r.geral + "%", String(r.concluidas), String(r.andamento)]);
+          });
+        });
+
+        doc.autoTable({
+          startY: 37,
+          head: [["Nº", "Nome do aluno", "Cargo / Função", "Telefone / WhatsApp", "E-mail de acesso", "Progresso", "Concluídas", "Em andamento"]],
+          body: corpo,
+          theme: "grid",
+          margin: { left: 14, right: 14, bottom: 16 },
+          styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
+          headStyles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 52 }, 2: { cellWidth: 38 }, 3: { cellWidth: 34 }, 5: { cellWidth: 20, halign: "center" }, 6: { cellWidth: 20, halign: "center" }, 7: { cellWidth: 24, halign: "center" } },
+          rowPageBreak: "avoid"
+        });
+        pdfRodape(doc);
+        doc.save(`alunos_sws_${dataArquivo()}.pdf`);
+      } catch (err) {
+        console.error("Erro ao gerar o PDF:", err);
+        alert("Não foi possível gerar o PDF. Verifique a conexão com a internet e tente novamente.");
+      }
+    };
+
+    window.exportarAlunoPdf = async (uid) => {
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      try {
+        await garantirPdfLib();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        pdfCabecalho(doc, "Curso Básico de Teologia — Ficha do Aluno");
+
+        doc.autoTable({
+          startY: 33,
+          body: [
+            ["Nome", r.nome],
+            ["E-mail de acesso", r.email || "—"],
+            ["Igreja", r.info?.igreja || "—"],
+            ["Cargo / Função", r.info?.cargo || "—"],
+            ["Telefone / WhatsApp", r.info?.tel || "—"],
+            ["Acesso", textoAcesso(r.acesso)],
+            ["Progresso geral", r.geral + "%"],
+            ["Aulas concluídas", String(r.concluidas)],
+            ["Aulas em andamento", String(r.andamento)],
+            ["Última atividade", quandoTexto(r.ultimo) || "—"]
+          ],
+          theme: "grid",
+          margin: { left: 14, right: 14 },
+          styles: { font: "helvetica", fontSize: 10, cellPadding: 2.5, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
+          columnStyles: { 0: { cellWidth: 48, fontStyle: "bold", fillColor: [238, 242, 251], textColor: PDF_AZUL } }
+        });
+
+        const visiveis = new Set(aulasVisiveis(r.acesso).map(l => l.id));
+        const corpo = [];
+        courseData.forEach(m => {
+          const linhasMod = [];
+          m.materias?.forEach(mat => {
+            const aulas = (mat.lessons || []).filter(l => visiveis.has(l.id));
+            if (!aulas.length) return;
+            linhasMod.push([{ content: mat.title, colSpan: 3, styles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" } }]);
+            aulas.forEach(l => {
+              const v = r.aulas[l.id] || 0;
+              linhasMod.push([l.name, v + "%", v >= 100 ? "Concluída" : v > 0 ? "Em andamento" : "Não iniciada"]);
+            });
+          });
+          if (linhasMod.length) {
+            corpo.push([{ content: m.name, colSpan: 3, styles: { fillColor: PDF_AZUL, textColor: 255, fontStyle: "bold" } }]);
+            corpo.push(...linhasMod);
+          }
+        });
+
+        if (corpo.length) {
+          doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 8,
+            head: [["Aula", "Progresso", "Situação"]],
+            body: corpo,
+            theme: "grid",
+            margin: { left: 14, right: 14, bottom: 16 },
+            styles: { font: "helvetica", fontSize: 9, cellPadding: 2, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
+            headStyles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" },
+            columnStyles: { 1: { cellWidth: 24, halign: "center" }, 2: { cellWidth: 32 } },
+            rowPageBreak: "avoid",
+            didParseCell: (d) => {
+              if (d.section !== "body" || d.column.index !== 2 || typeof d.cell.raw !== "string") return;
+              if (d.cell.raw === "Concluída") { d.cell.styles.textColor = [0, 120, 60]; d.cell.styles.fontStyle = "bold"; }
+              else if (d.cell.raw === "Em andamento") { d.cell.styles.textColor = [160, 110, 0]; d.cell.styles.fontStyle = "bold"; }
+              else { d.cell.styles.textColor = [150, 150, 150]; }
+            }
+          });
+        }
+        pdfRodape(doc);
+        doc.save(`aluno_${nomeArquivoSeguro(r.nome)}_${dataArquivo()}.pdf`);
+      } catch (err) {
+        console.error("Erro ao gerar o PDF:", err);
+        alert("Não foi possível gerar o PDF. Verifique a conexão com a internet e tente novamente.");
+      }
+    };
+
     window.filtrarAdmin = (q) => renderAdminRows(q);
 
     window.toggleAdminDetail = (uid) => {
@@ -1372,7 +1671,8 @@
 
     function renderAdminRows(q) {
       const term = (q || "").toLowerCase().trim();
-      const rows = adminRows.filter(r => !term || r.nome.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+      const rows = adminRows.filter(r => !term || r.nome.toLowerCase().includes(term) || r.email.toLowerCase().includes(term)
+        || (r.info && [r.info.igreja, r.info.cargo, r.info.tel].some(v => (v || "").toLowerCase().includes(term))));
       if (!rows.length) {
         $("admBody").innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>`;
         return;
@@ -1388,11 +1688,11 @@
         const quando = r.ultimo ? new Date(r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
         return `
           <tr class="adm-row" onclick="toggleAdminDetail('${esc(r.uid)}')">
-            <td><strong>${esc(r.nome)}</strong>${adminsMap[r.uid] ? ' <span class="role-badge">Administrador</span>' : ""}${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}</td>
+            <td><strong>${esc(r.nome)}</strong>${adminsMap[r.uid] ? ' <span class="role-badge">Administrador</span>' : ""}${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}${r.info ? `<br><span style="color:var(--text-muted); font-size:12px;">${esc([r.info.igreja, r.info.cargo].filter(Boolean).join(" · "))}${r.info.tel ? `<br>📞 ${esc(r.info.tel)}` : ""}</span>` : ""}</td>
             <td><strong>${r.geral}%</strong><div class="adm-bar"><div style="width:${r.geral}%"></div></div></td>
             <td>${r.concluidas}</td>
             <td>${r.andamento}</td>
-            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Alterar acesso</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
+            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Editar</button> <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAlunoPdf('${esc(r.uid)}')">⬇ PDF</button> <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAluno('${esc(r.uid)}')">⬇ CSV</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
             <td>${quando}</td>
           </tr>
           <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="6" class="adm-detail">${detalhe}</td></tr>`;
@@ -1513,6 +1813,21 @@
     }
 
     // Campos de acesso (usados no cadastro e na edição pelo administrador)
+    // Dados cadastrais do aluno (nome, igreja, cargo, telefone)
+    function dadosAlunoFormHtml(d, nomeObrigatorio) {
+      d = d || {};
+      return `
+        <div class="form-group"><label>Nome completo${nomeObrigatorio ? "" : ""}</label><input type="text" id="dNome" value="${esc(d.nome || "")}" placeholder="Ex: Maria da Silva" ${nomeObrigatorio ? "required" : ""}></div>
+        <div class="form-group"><label>Igreja</label><input type="text" id="dIgreja" value="${esc(d.igreja || "")}" placeholder="Ex: Igreja Unida Cedro (SE)"></div>
+        <div class="form-group"><label>Cargo / Função</label><input type="text" id="dCargo" value="${esc(d.cargo || "")}" placeholder="Ex: Diácono, Cooperadora, Membro"></div>
+        <div class="form-group"><label>Telefone / WhatsApp</label><input type="tel" id="dTel" value="${esc(d.tel || "")}" placeholder="Ex: (79) 99999-9999"></div>`;
+    }
+
+    function lerDadosAlunoDoForm() {
+      const v = (id) => ($(id)?.value || "").trim();
+      return { nome: v("dNome"), igreja: v("dIgreja"), cargo: v("dCargo"), telefone: v("dTel") };
+    }
+
     function acessoFormHtml(acesso) {
       const modo = acesso?.modo || "padrao";
       const mods = acesso?.modulos || [];
