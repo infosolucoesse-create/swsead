@@ -188,6 +188,7 @@
         <button class="btn btn-secondary" onclick="toggleTheme()" title="Alternar Tema">🌓</button>
         <button class="btn btn-secondary" id="btnProgressoAlunos" style="display:none;" onclick="showAdminProgress()">📊 Alunos</button>
         <button class="btn btn-secondary" id="btnAdmin" style="display:none;" onclick="showRegisterModal()">+ Aluno</button>
+        <button class="btn btn-secondary" id="btnHistorico" style="display:none;" onclick="abrirMeuHistorico()">📋 Meu histórico</button>
         <button class="btn btn-danger" onclick="handleLogout()">Sair</button>
       </div>
     </header>
@@ -990,6 +991,9 @@
         uid = cred.user.uid;
         await signOut(secondaryAuth);
       } catch (error) {
+        $("err").textContent = error.code === "auth/email-already-in-use"
+          ? "Este e-mail já está cadastrado. Se o aluno foi excluído, reative-o em 📊 Alunos → Mostrar removidos."
+          : "Erro ao cadastrar usuário.";
         $("err").style.display = "block";
         return;
       }
@@ -1011,7 +1015,24 @@
       location.reload();
     };
 
+    // Conta excluída pelo administrador: o login continua existindo no Firebase, mas o site não deixa entrar.
+    async function contaAtiva() {
+      if (ehSuperAdmin()) return true;
+      try {
+        const snap = await getDoc(doc(db, "acessos", auth.currentUser.uid));
+        if (snap.exists() && snap.data().removido === true) {
+          await signOut(auth);
+          alert("Seu acesso à plataforma foi encerrado. Fale com a administração do seminário.");
+          return false;
+        }
+      } catch (err) {
+        console.error("Erro ao verificar a conta:", err);
+      }
+      return true;
+    }
+
     async function setupUserSession() {
+      if (!(await contaAtiva())) return;
       let displayName = currentUser.includes('+') && currentUser.includes('@gmail.com')
         ? currentUser.split('+')[1].split('@')[0].charAt(0).toUpperCase() + currentUser.split('+')[1].split('@')[0].slice(1)
         : (currentUser.endsWith('@sws-ead.internal') ? currentUser.split('@')[0].charAt(0).toUpperCase() + currentUser.split('@')[0].slice(1) : currentUser);
@@ -1023,9 +1044,11 @@
       $("userRoleTag").textContent = ehSuperAdmin() ? "Administrador geral" : (isAdmin ? "Administrador" : "Aluno");
       $("btnAdmin").style.display = isAdmin ? "inline-block" : "none";
       $("btnProgressoAlunos").style.display = isAdmin ? "inline-block" : "none";
+      $("btnHistorico").style.display = isAdmin ? "none" : "inline-block";
       await loadProgressFromCloud();
       await loadAcessoFromCloud();
       await loadCourseDataFromCloud();
+      await verificarLiberacoes(true);
       updateOverallProgress();
     }
 
@@ -1134,7 +1157,7 @@
       let cloudOk = true;
       try {
         const snap = await getDoc(progressRef());
-        if (snap.exists()) cloud = snap.data().aulas || {};
+        if (snap.exists()) { cloud = snap.data().aulas || {}; provasEstado = snap.data().provas || {}; }
       } catch (err) {
         cloudOk = false;
         console.error("Erro ao carregar progresso:", err);
@@ -1157,6 +1180,7 @@
       progressCache = merged;
       localStorage.setItem(`progress_${currentUser}`, JSON.stringify(progressCache));
 
+      provasCarregadas = cloudOk;
       if (cloudOk) {
         progressDirty = true;
         await flushProgress();
@@ -1184,6 +1208,7 @@
       progressDirty = true;
       if (!progressTimer) progressTimer = setTimeout(flushProgress, 5000);
       updateOverallProgress();
+      if (v >= 100) verificarLiberacoes(false);
       // Não chamamos renderModules() aqui: durante o vídeo, a lista inteira é
       // reconstruída apenas quando o player fecha ou pausa.
     }
@@ -1303,8 +1328,21 @@
           const sum = lessons.reduce((a, l) => a + (aulas[l.id] || 0), 0);
           const email = data.email || acesso?.email || "";
           const dados = dadosDoAluno(email, acesso);
+          const provasData = data.provas || {};
+          const notasFinais = {};
+          todasMaterias().forEach(({ mat }) => {
+            const n = notaFinalMateria(mat.id, acesso?.notas, provasData);
+            if (typeof n === "number") notasFinais[mat.id] = n;
+          });
+          const valoresNotas = Object.values(notasFinais);
           return {
-            uid, email, nome: dados.nome || nomeDoEmail(email), info: (dados.igreja || dados.cargo || dados.tel) ? dados : null, acesso,
+            provas: provasData,
+            provasParciais: Object.values(provasData).filter(e => (e?.prova ? 1 : 0) + (e?.caderno ? 1 : 0) === 1).length,
+            notasFinais,
+            notas: acesso?.notas || {},
+            qtdNotas: valoresNotas.length,
+            mediaNotas: valoresNotas.length ? valoresNotas.reduce((a, b) => a + b, 0) / valoresNotas.length : null,
+            uid, removido: Boolean(acesso?.removido), email, nome: dados.nome || nomeDoEmail(email), info: (dados.igreja || dados.cargo || dados.tel) ? dados : null, acesso,
             visivelPara: acesso?.visivelPara || [],
             geral: lessons.length ? Math.round(sum / lessons.length) : 0,
             concluidas: lessons.filter(l => (aulas[l.id] || 0) >= 100).length,
@@ -1397,18 +1435,21 @@
         <div class="adm-top">
           <div>
             <h2>Progresso dos alunos</h2>
-            <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.length} aluno(s) ${ehSuperAdmin() ? "registrado(s)" : "liberado(s) para você"}. Clique em um aluno para ver as aulas.</p>
+            <p class="modal-subtitle" style="margin-bottom:0;">${adminRows.filter(r => !r.removido).length} aluno(s) ${ehSuperAdmin() ? "registrado(s)" : "liberado(s) para você"}. Clique em um aluno para ver as aulas.</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+            ${ehSuperAdmin() ? `<button class="btn btn-secondary" onclick="abrirNotasLote()">📝 Notas em lote</button>` : ""}
+            <button class="btn btn-secondary" onclick="showAdminProgress()">↻ Atualizar</button>
             <button class="btn btn-secondary" onclick="exportarTodosPdf()">⬇ Exportar todos (PDF)</button>
             <button class="btn btn-secondary" onclick="exportarTodos()">⬇ Exportar todos (CSV)</button>
             <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
           </div>
         </div>
-        <input type="text" class="search-bar" style="width:100%; margin-top:14px;" placeholder="Buscar por nome, e-mail, igreja, cargo ou telefone..." oninput="filtrarAdmin(this.value)">
+        <input type="text" class="search-bar" id="admSearch" style="width:100%; margin-top:14px;" placeholder="Buscar por nome, e-mail, igreja, cargo ou telefone..." oninput="filtrarAdmin(this.value)">
+        ${ehSuperAdmin() && adminRows.some(r => r.removido) ? `<label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); margin-top:10px; cursor:pointer;"><input type="checkbox" onchange="alternarMostrarRemovidos(this.checked)" ${mostrarRemovidos ? "checked" : ""}> Mostrar removidos (${adminRows.filter(r => r.removido).length})</label>` : ""}
         <div class="adm-wrap">
           <table class="adm-table">
-            <thead><tr><th>Aluno</th><th>Progresso</th><th>Concluídas</th><th>Em andamento</th><th>Acesso</th><th>Última atividade</th></tr></thead>
+            <thead><tr><th>Aluno</th><th>Progresso</th><th>Concluídas</th><th>Em andamento</th><th>Notas</th><th>Acesso</th><th>Última atividade</th></tr></thead>
             <tbody id="admBody"></tbody>
           </table>
         </div>
@@ -1448,10 +1489,10 @@
     }
 
     window.exportarTodos = () => {
-      if (!adminRows.length) { alert("Não há alunos para exportar."); return; }
-      const linhas = [["Nome", "E-mail", "Igreja", "Cargo / Função", "Telefone / WhatsApp", "Progresso (%)", "Aulas concluídas", "Aulas em andamento", "Acesso", "Última atividade"]];
-      [...adminRows].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(r => {
-        linhas.push([r.nome, r.email, r.info?.igreja, r.info?.cargo, r.info?.tel, r.geral, r.concluidas, r.andamento, textoAcesso(r.acesso), quandoTexto(r.ultimo)]);
+      if (!alunosAtivos().length) { alert("Não há alunos para exportar."); return; }
+      const linhas = [["Nome", "E-mail", "Igreja", "Cargo / Função", "Telefone / WhatsApp", "Progresso (%)", "Aulas concluídas", "Aulas em andamento", "Provas lançadas", "Média das provas", "Acesso", "Última atividade"]];
+      alunosAtivos().sort((a, b) => a.nome.localeCompare(b.nome)).forEach(r => {
+        linhas.push([r.nome, r.email, r.info?.igreja, r.info?.cargo, r.info?.tel, r.geral, r.concluidas, r.andamento, r.qtdNotas, r.mediaNotas != null ? fmtNota(r.mediaNotas) : "", textoAcesso(r.acesso), quandoTexto(r.ultimo)]);
       });
       baixarCsv(`alunos_sws_${dataArquivo()}.csv`, linhas);
     };
@@ -1470,6 +1511,7 @@
         ["Aulas em andamento", r.andamento],
         ["Acesso", textoAcesso(r.acesso)],
         ["Última atividade", quandoTexto(r.ultimo)],
+        ["Média das provas", r.mediaNotas != null ? fmtNota(r.mediaNotas) : ""],
         [],
         ["Módulo", "Matéria", "Aula", "Progresso (%)", "Situação"]
       ];
@@ -1479,6 +1521,12 @@
         const v = r.aulas[l.id] || 0;
         linhas.push([m.name, mat.title, l.name, v, v >= 100 ? "Concluída" : v > 0 ? "Em andamento" : "Não iniciada"]);
       })));
+      linhas.push([], ["Notas das provas"], ["Módulo", "Matéria", "Nota"]);
+      courseData.forEach(m => m.materias?.forEach(mat => {
+        if (!(mat.lessons || []).some(l => visiveis.has(l.id))) return;
+        const n = r.notasFinais?.[mat.id];
+        linhas.push([m.name, mat.title, typeof n === "number" ? fmtNota(n) : ""]);
+      }));
       baixarCsv(`aluno_${nomeArquivoSeguro(r.nome)}_${dataArquivo()}.csv`, linhas);
     };
 
@@ -1541,7 +1589,7 @@
     }
 
     window.exportarTodosPdf = async () => {
-      if (!adminRows.length) { alert("Não há alunos para exportar."); return; }
+      if (!alunosAtivos().length) { alert("Não há alunos para exportar."); return; }
       try {
         await garantirPdfLib();
         const { jsPDF } = window.jspdf;
@@ -1551,32 +1599,32 @@
         // agrupa por igreja (alunos sem igreja informada ficam no fim)
         const SEM = "Igreja não informada";
         const grupos = {};
-        adminRows.forEach(r => { const ig = (r.info?.igreja || "").trim() || SEM; (grupos[ig] = grupos[ig] || []).push(r); });
+        alunosAtivos().forEach(r => { const ig = (r.info?.igreja || "").trim() || SEM; (grupos[ig] = grupos[ig] || []).push(r); });
         const nomesGrupos = Object.keys(grupos).sort((a, b) => a === SEM ? 1 : b === SEM ? -1 : a.localeCompare(b));
 
         doc.setFontSize(10);
         doc.setTextColor(40, 40, 40);
-        doc.text(`Total de alunos: ${adminRows.length}   |   Igrejas: ${nomesGrupos.filter(g => g !== SEM).length}`, 14, 33);
+        doc.text(`Total de alunos: ${alunosAtivos().length}   |   Igrejas: ${nomesGrupos.filter(g => g !== SEM).length}`, 14, 33);
 
         const corpo = [];
         let n = 0;
         nomesGrupos.forEach(g => {
-          corpo.push([{ content: `${g} (${grupos[g].length})`, colSpan: 8, styles: { fillColor: PDF_AZUL, textColor: 255, fontStyle: "bold", halign: "left" } }]);
+          corpo.push([{ content: `${g} (${grupos[g].length})`, colSpan: 9, styles: { fillColor: PDF_AZUL, textColor: 255, fontStyle: "bold", halign: "left" } }]);
           grupos[g].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(r => {
             n++;
-            corpo.push([String(n).padStart(2, "0"), r.nome, r.info?.cargo || "—", r.info?.tel || "—", r.email || "—", r.geral + "%", String(r.concluidas), String(r.andamento)]);
+            corpo.push([String(n).padStart(2, "0"), r.nome, r.info?.cargo || "—", r.info?.tel || "—", r.email || "—", r.geral + "%", String(r.concluidas), String(r.andamento), r.mediaNotas != null ? fmtNota(r.mediaNotas) : "—"]);
           });
         });
 
         doc.autoTable({
           startY: 37,
-          head: [["Nº", "Nome do aluno", "Cargo / Função", "Telefone / WhatsApp", "E-mail de acesso", "Progresso", "Concluídas", "Em andamento"]],
+          head: [["Nº", "Nome do aluno", "Cargo / Função", "Telefone / WhatsApp", "E-mail de acesso", "Progresso", "Concluídas", "Em andamento", "Média das provas"]],
           body: corpo,
           theme: "grid",
           margin: { left: 14, right: 14, bottom: 16 },
           styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
           headStyles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" },
-          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 52 }, 2: { cellWidth: 38 }, 3: { cellWidth: 34 }, 5: { cellWidth: 20, halign: "center" }, 6: { cellWidth: 20, halign: "center" }, 7: { cellWidth: 24, halign: "center" } },
+          columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 48 }, 2: { cellWidth: 34 }, 3: { cellWidth: 32 }, 5: { cellWidth: 18, halign: "center" }, 6: { cellWidth: 18, halign: "center" }, 7: { cellWidth: 22, halign: "center" }, 8: { cellWidth: 22, halign: "center" } },
           rowPageBreak: "avoid"
         });
         pdfRodape(doc);
@@ -1608,6 +1656,7 @@
             ["Progresso geral", r.geral + "%"],
             ["Aulas concluídas", String(r.concluidas)],
             ["Aulas em andamento", String(r.andamento)],
+            ["Média das provas", r.mediaNotas != null ? fmtNota(r.mediaNotas) : "—"],
             ["Última atividade", quandoTexto(r.ultimo) || "—"]
           ],
           theme: "grid",
@@ -1617,6 +1666,31 @@
         });
 
         const visiveis = new Set(aulasVisiveis(r.acesso).map(l => l.id));
+
+        const corpoNotas = [];
+        courseData.forEach(m => {
+          const mats = (m.materias || []).filter(mat => (mat.lessons || []).some(l => visiveis.has(l.id)));
+          if (!mats.length) return;
+          corpoNotas.push([{ content: m.name, colSpan: 2, styles: { fillColor: PDF_AZUL, textColor: 255, fontStyle: "bold" } }]);
+          mats.forEach(mat => {
+            const n = r.notasFinais?.[mat.id];
+            corpoNotas.push([mat.title, typeof n === "number" ? fmtNota(n) : "—"]);
+          });
+        });
+        if (corpoNotas.length) {
+          doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 8,
+            head: [["Notas das provas (por matéria)", "Nota"]],
+            body: corpoNotas,
+            theme: "grid",
+            margin: { left: 14, right: 14, bottom: 16 },
+            styles: { font: "helvetica", fontSize: 9, cellPadding: 2, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
+            headStyles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" },
+            columnStyles: { 1: { cellWidth: 30, halign: "center" } },
+            rowPageBreak: "avoid"
+          });
+        }
+
         const corpo = [];
         courseData.forEach(m => {
           const linhasMod = [];
@@ -1662,6 +1736,744 @@
       }
     };
 
+    // ===== Excluir / reativar aluno =====
+    // O login do aluno continua no Firebase (o site não consegue apagar a conta de outra pessoa),
+    // mas a conta fica marcada como removida: some das listas e não consegue mais entrar.
+    let mostrarRemovidos = false;
+    const alunosAtivos = () => adminRows.filter(r => !r.removido);
+    const emailEhSuperAdmin = (e) => ["infosolucoesse@gmail.com", "infosolucoesse+anderson@gmail.com"].includes((e || "").toLowerCase());
+
+    window.alternarMostrarRemovidos = (v) => {
+      mostrarRemovidos = Boolean(v);
+      renderAdminRows($("admSearch")?.value || "");
+    };
+
+    window.excluirAluno = async (uid) => {
+      if (!ehSuperAdmin()) return;
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      if (uid === auth.currentUser.uid || emailEhSuperAdmin(r.email)) {
+        alert("Esta conta não pode ser excluída.");
+        return;
+      }
+      const aviso = `Excluir ${r.nome}?\n\n${r.email}\n\nO aluno perde o acesso à plataforma e sai da lista. O progresso fica guardado e você pode reativá-lo depois em "Mostrar removidos".`;
+      if (!confirm(aviso)) return;
+      try {
+        await setDoc(doc(db, "acessos", uid), { email: r.email, removido: true, removidoEm: Date.now() }, { merge: true });
+        if (adminsMap[uid]) await deleteDoc(doc(db, "admins", uid));
+        showAdminProgress();
+      } catch (err) {
+        console.error("Erro ao excluir o aluno:", err);
+        alert("Não foi possível excluir o aluno. Confira se as regras do Firestore foram atualizadas.");
+      }
+    };
+
+    window.reativarAluno = async (uid) => {
+      if (!ehSuperAdmin()) return;
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      if (!confirm(`Reativar ${r.nome}? Ele voltará a acessar a plataforma com o mesmo e-mail e senha.`)) return;
+      try {
+        await setDoc(doc(db, "acessos", uid), { email: r.email, removido: false }, { merge: true });
+        showAdminProgress();
+      } catch (err) {
+        console.error("Erro ao reativar o aluno:", err);
+        alert("Não foi possível reativar o aluno. Confira se as regras do Firestore foram atualizadas.");
+      }
+    };
+
+    // ===== Prova e caderno de atividades online =====
+    // Prova (7,0) + caderno (1,5) + presença (1,5) = 10. Fora do prazo de 30 dias: prova 6,0, caderno 1,0 e presença 1,0.
+    // Perguntas ficam em cada matéria (provaQuestoes / cadernoQuestoes, no curso). O resultado de cada aluno fica em
+    // progresso/{uid}.provas[idMateria] = { liberadoEm, prova: {...}, caderno: {...} }.
+    const PRAZO_DIAS = 30;
+    const DIA_MS = 86400000;
+    const NUM_OPCOES = 5;
+    const r2 = (x) => Math.round(x * 100) / 100;
+
+    const provaOnlineAtiva = (mat) => Boolean(mat && mat.provaQuestoes?.length && mat.cadernoQuestoes?.length);
+
+    // O gabarito não fica em texto aberto: guardamos só um código (hash) de cada resposta correta.
+    async function hashResposta(matId, tipo, qid, idx) {
+      const dados = new TextEncoder().encode(`sws|${matId}|${tipo}|${qid}|${idx}`);
+      const dig = await crypto.subtle.digest("SHA-256", dados);
+      return [...new Uint8Array(dig)].map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Retorna null enquanto faltar prova ou caderno; depois, os pontos de cada parte e a nota final.
+    function calcNotaOnline(est) {
+      const p = est?.prova, c = est?.caderno;
+      if (!p || !c) return null;
+      const fp = p.total ? p.acertos / p.total : 0;
+      const fc = c.total ? c.acertos / c.total : 0;
+      const prova = r2(fp * (p.noPrazo ? 7 : 6));
+      const caderno = r2(fc * (c.noPrazo ? 1.5 : 1));
+      const presenca = (p.noPrazo && c.noPrazo) ? 1.5 : 1;
+      return { prova, caderno, presenca, nota: r2(prova + caderno + presenca) };
+    }
+
+    // Nota final da matéria: a da prova online, se existir; senão a lançada à mão / importada.
+    function notaFinalMateria(matId, notasManuais, provas) {
+      const on = calcNotaOnline(provas?.[matId]);
+      if (on) return on.nota;
+      const m = notasManuais?.[matId]?.nota;
+      return typeof m === "number" ? m : null;
+    }
+
+    // Começa a contar os 30 dias quando o aluno termina as aulas da matéria (e a prova online já existe).
+    async function verificarLiberacoes(renderizar) {
+      if (!auth.currentUser || ehAdmin() || !provasCarregadas) return;
+      const agora = Date.now();
+      const novos = {};
+      todasMaterias().forEach(({ mat }) => {
+        if (provaOnlineAtiva(mat) && isMateriaCompleted(mat) && !provasEstado[mat.id]?.liberadoEm && typeof notasAluno[mat.id]?.nota !== "number") novos[mat.id] = { liberadoEm: agora };
+      });
+      const ids = Object.keys(novos);
+      if (!ids.length) return;
+      ids.forEach(id => { provasEstado[id] = { ...(provasEstado[id] || {}), liberadoEm: agora }; });
+      try {
+        await setDoc(progressRef(), { email: currentUser, provas: novos }, { merge: true });
+      } catch (err) {
+        console.error("Erro ao registrar a liberação da prova:", err);
+        ids.forEach(id => { delete provasEstado[id].liberadoEm; });
+        return;
+      }
+      if (renderizar) renderModules();
+    }
+
+    function provaOnlineHtml(mat, notaHtml) {
+      const completa = isMateriaCompleted(mat);
+      const est = provasEstado[mat.id] || {};
+      // Nota já lançada pela coordenação (prova feita em outro meio): mostra só a nota, sem botões de prova.
+      if (typeof notasAluno[mat.id]?.nota === "number" && !est.prova && !est.caderno) {
+        return `<span style="display:flex; align-items:center; gap:8px;">${notaHtml}</span>`;
+      }
+      const botao = (tipo, fazer, feito, bloqueado) => est[tipo]
+        ? `<button class="action-btn available" style="white-space:nowrap;" onclick="abrirProvaOnline('${mat.id}','${tipo}')">✓ ${feito}</button>`
+        : `<button class="action-btn ${completa ? "available" : ""}" style="white-space:nowrap;" onclick="abrirProvaOnline('${mat.id}','${tipo}')">${completa ? fazer : "🔒 " + bloqueado}</button>`;
+      let prazoHtml = "";
+      if (completa && est.liberadoEm && !(est.prova && est.caderno)) {
+        const dias = Math.ceil((est.liberadoEm + PRAZO_DIAS * DIA_MS - Date.now()) / DIA_MS);
+        prazoHtml = dias > 0
+          ? `<span class="materia-count">⏳ ${dias} dia(s) para entregar</span>`
+          : `<span class="materia-count" style="color:var(--danger); font-weight:600;">⚠ Prazo vencido</span>`;
+      }
+      return `<span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;">${notaHtml}${prazoHtml}${botao("prova", "📝 Fazer Prova", "Prova enviada", "Prova")}${botao("caderno", "📓 Fazer Caderno", "Caderno enviado", "Caderno")}</span>`;
+    }
+
+    function mostrarResultadoOnline(matId, tipo, novo) {
+      const mat = findMateria(matId);
+      const est = provasEstado[matId] || {};
+      const reg = est[tipo];
+      if (!mat || !reg) return;
+      const titulo = tipo === "prova" ? "Prova" : "Caderno de atividades";
+      const enviado = tipo === "prova" ? "Prova enviada" : "Caderno enviado";
+      const calc = calcNotaOnline(est);
+      let corpo = `<p style="font-size:15px; margin:8px 0;">Você acertou <strong>${reg.acertos}</strong> de <strong>${reg.total}</strong> questões.</p>`;
+      const maxEtapa = tipo === "prova" ? (reg.noPrazo ? 7 : 6) : (reg.noPrazo ? 1.5 : 1);
+      corpo += `<p style="margin:4px 0;">Pontos desta etapa: <strong>${fmtNota(r2(reg.total ? reg.acertos / reg.total * maxEtapa : 0))}</strong> de ${fmtNota(maxEtapa)}.</p>`;
+      if (!reg.noPrazo) corpo += `<p class="modal-subtitle">Enviado depois do prazo de ${PRAZO_DIAS} dias.</p>`;
+      if (calc) {
+        corpo += `<div style="margin-top:12px; padding:12px; border:1px solid var(--border-color); border-radius:10px; font-size:13px; line-height:1.8;">
+          Prova: <strong>${fmtNota(calc.prova)}</strong> (máx. ${fmtNota(est.prova.noPrazo ? 7 : 6)})<br>
+          Caderno: <strong>${fmtNota(calc.caderno)}</strong> (máx. ${fmtNota(est.caderno.noPrazo ? 1.5 : 1)})<br>
+          Presença: <strong>${fmtNota(calc.presenca)}</strong> (máx. 1,5)<br>
+          <span style="font-size:16px;">Nota final: <strong>${fmtNota(calc.nota)}</strong></span>
+        </div>`;
+      } else {
+        corpo += `<p class="modal-subtitle" style="margin-top:10px;">Sua nota final aparece assim que você enviar também ${tipo === "prova" ? "o caderno de atividades" : "a prova"}.</p>`;
+      }
+      openModal(`<h2>${novo ? "✓ " + enviado : titulo}</h2><p class="modal-subtitle">${esc(mat.title)}</p>${corpo}<div style="margin-top:14px;"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);
+    }
+
+    window.abrirProvaOnline = async (matId, tipo) => {
+      const mat = findMateria(matId);
+      if (!mat || !provaOnlineAtiva(mat)) { alert("Esta prova ainda não está disponível."); return; }
+      const titulo = tipo === "prova" ? "Prova" : "Caderno de atividades";
+      if (typeof notasAluno[matId]?.nota === "number" && !provasEstado[matId]?.prova && !provasEstado[matId]?.caderno) {
+        alert("A sua nota desta matéria já foi lançada pela coordenação.");
+        return;
+      }
+      if (!isMateriaCompleted(mat)) {
+        alert(`🔒 ${titulo} bloqueado!\n\nVocê precisa assistir a 100% das aulas de ${mat.title} para liberar a prova e o caderno de atividades.`);
+        return;
+      }
+      if (!provasCarregadas) { alert("Não foi possível verificar o seu histórico agora. Recarregue a página e tente de novo."); return; }
+      if (provasEstado[matId]?.[tipo]) { mostrarResultadoOnline(matId, tipo, false); return; }
+
+      await verificarLiberacoes(false);
+      const lib = provasEstado[matId]?.liberadoEm || Date.now();
+      const fim = lib + PRAZO_DIAS * DIA_MS;
+      const atrasado = Date.now() > fim;
+      const dataFim = new Date(fim).toLocaleDateString("pt-BR");
+      const dias = Math.max(0, Math.ceil((fim - Date.now()) / DIA_MS));
+      const valor = tipo === "prova" ? 7 : 1.5, valorAtraso = tipo === "prova" ? 6 : 1;
+      const questoes = tipo === "prova" ? mat.provaQuestoes : mat.cadernoQuestoes;
+      const aviso = atrasado
+        ? `⚠ O prazo de ${PRAZO_DIAS} dias terminou em ${dataFim}. Você ainda pode enviar, mas ${tipo === "prova" ? "a prova" : "o caderno"} passa a valer no máximo ${fmtNota(valorAtraso)} (em vez de ${fmtNota(valor)}) e a presença cai de 1,5 para 1,0.`
+        : `Prazo: até ${dataFim} (${dias} dia(s)). Depois disso, ${tipo === "prova" ? "a prova" : "o caderno"} vale no máximo ${fmtNota(valorAtraso)} e a presença cai de 1,5 para 1,0.`;
+
+      const blocos = questoes.map((q, i) => `
+        <div style="border:1px solid var(--border-color); border-radius:10px; padding:12px; margin-bottom:12px;">
+          <p style="margin:0 0 8px; font-weight:600;">${i + 1}. ${esc(q.q)}</p>
+          ${q.o.map((txt, k) => `<label style="display:flex; align-items:flex-start; gap:8px; margin:6px 0; font-size:13px; cursor:pointer;"><input type="radio" name="resp_${esc(q.id)}" value="${k}" style="margin-top:3px;"><span><strong>${String.fromCharCode(65 + k)})</strong> ${esc(txt)}</span></label>`).join("")}
+        </div>`).join("");
+      openModal(`
+        <h2>${titulo} — ${esc(mat.title)}</h2>
+        <p class="modal-subtitle" style="margin-bottom:4px;">Valor: ${fmtNota(valor)} pontos · ${questoes.length} questão(ões) · só é possível enviar uma vez.</p>
+        <p class="modal-subtitle" style="${atrasado ? "color:var(--danger);" : ""}">${esc(aviso)}</p>
+        <form id="formProvaOnline">
+          <div style="max-height:55vh; overflow:auto; padding-right:6px;">${blocos}</div>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" id="btnEnviarProva" style="flex:1;">Enviar</button>
+            <button class="btn btn-secondary" type="button" onclick="closeModal()">Sair sem enviar</button>
+          </div>
+        </form>
+      `, "wide");
+      $("formProvaOnline").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const respostas = {};
+        for (const q of questoes) {
+          const sel = document.querySelector(`input[name="resp_${q.id}"]:checked`);
+          if (!sel) { alert("Responda todas as questões antes de enviar."); return; }
+          respostas[q.id] = Number(sel.value);
+        }
+        if (!confirm("Depois de enviar você não poderá refazer. Enviar agora?")) return;
+        const btn = $("btnEnviarProva");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+        let acertos = 0;
+        try {
+          for (const q of questoes) {
+            if (await hashResposta(matId, tipo, q.id, respostas[q.id]) === q.h) acertos++;
+          }
+        } catch (err) {
+          console.error("Erro ao corrigir:", err);
+          alert("Não foi possível corrigir agora. Use o site em https e tente novamente.");
+          btn.disabled = false; btn.textContent = "Enviar";
+          return;
+        }
+        const agora = Date.now();
+        // Guardamos a prova como o aluno a viu, para a conferência continuar correta mesmo se as questões forem alteradas depois.
+        const itens = questoes.map(q => ({ id: q.id, q: q.q, o: q.o, h: q.h, m: respostas[q.id] }));
+        const registro = { itens, acertos, total: questoes.length, enviadoEm: agora, noPrazo: agora <= fim };
+        try {
+          await setDoc(progressRef(), { email: currentUser, provas: { [matId]: { liberadoEm: lib, [tipo]: registro } } }, { merge: true });
+        } catch (err) {
+          console.error("Erro ao enviar a prova:", err);
+          alert("Não foi possível enviar. Verifique a conexão e tente novamente (suas respostas continuam na tela).");
+          btn.disabled = false; btn.textContent = "Enviar";
+          return;
+        }
+        provasEstado[matId] = { ...(provasEstado[matId] || {}), liberadoEm: lib, [tipo]: registro };
+        renderModules();
+        mostrarResultadoOnline(matId, tipo, true);
+      });
+    };
+
+    // --- Lançamento de notas em lote: uma matéria, todos os alunos (só master) ---
+    window.abrirNotasLote = () => {
+      if (!ehSuperAdmin()) return;
+      const opcoes = courseData.map(m => `<optgroup label="${esc(m.name)}">${(m.materias || []).map(mat => `<option value="${esc(mat.id)}">${esc(mat.title)}</option>`).join("")}</optgroup>`).join("");
+      openModal(`
+        <h2>Lançar notas em lote</h2>
+        <p class="modal-subtitle">Escolha a matéria e digite a nota (0 a 10) de cada aluno. Quem fez a prova pela plataforma mostra a nota automática e não é alterado. Deixe em branco quem não tem nota. Salve antes de trocar de matéria.</p>
+        <div class="form-group"><label>Matéria</label><select id="loteMat" style="${ESTILO_CAMPO}" onchange="renderNotasLote()">${opcoes}</select></div>
+        <div id="loteTabela"></div>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button class="btn btn-primary" type="button" style="flex:1;" onclick="salvarNotasLote()">Salvar notas</button>
+          <button class="btn btn-secondary" type="button" onclick="showAdminProgress()">Voltar</button>
+        </div>
+      `, "wide");
+      renderNotasLote();
+    };
+
+    window.renderNotasLote = () => {
+      const matId = $("loteMat").value;
+      const alunos = [...alunosAtivos()].sort((a, b) => a.nome.localeCompare(b.nome));
+      $("loteTabela").innerHTML = `
+        <div class="adm-wrap" style="max-height:45vh; overflow:auto;">
+          <table class="adm-table">
+            <thead><tr><th>Aluno</th><th style="width:140px;">Nota</th></tr></thead>
+            <tbody>${alunos.map(a => {
+              const on = calcNotaOnline(a.provas?.[matId]);
+              const n = a.notas?.[matId]?.nota;
+              const campo = on
+                ? `<strong>${fmtNota(on.nota)}</strong> <span style="font-size:11px; color:var(--text-muted);">prova online</span>`
+                : `<input type="text" inputmode="decimal" id="lote_${esc(a.uid)}" value="${typeof n === "number" ? esc(String(n).replace(".", ",")) : ""}" placeholder="0 a 10" style="${ESTILO_CAMPO} width:100px; padding:8px; text-align:center;">`;
+              return `<tr><td><strong>${esc(a.nome)}</strong>${a.email && a.nome !== a.email ? `<br><span style="color:var(--text-muted);">${esc(a.email)}</span>` : ""}</td><td>${campo}</td></tr>`;
+            }).join("")}</tbody>
+          </table>
+        </div>`;
+    };
+
+    window.salvarNotasLote = async () => {
+      if (!ehSuperAdmin()) return;
+      const matId = $("loteMat").value;
+      const em = Date.now();
+      const mudancas = [];
+      for (const a of alunosAtivos()) {
+        const el = $("lote_" + a.uid);
+        if (!el) continue; // aluno com prova online: não altera
+        const lido = lerNotaTexto(el.value);
+        if (lido && lido.erro) { alert(`Nota inválida para ${a.nome}: use um valor de 0 a 10.`); return; }
+        const antes = a.notas?.[matId]?.nota;
+        const antesVal = typeof antes === "number" ? antes : null;
+        const novo = lido ? lido.nota : null;
+        if (novo !== antesVal) mudancas.push({ a, novo });
+      }
+      if (!mudancas.length) { alert("Nenhuma alteração para salvar."); return; }
+      let ok = 0, falhas = 0;
+      await Promise.all(mudancas.map(async ({ a, novo }) => {
+        try {
+          await setDoc(doc(db, "acessos", a.uid), { ...(a.acesso ? {} : { email: a.email }), notas: { [matId]: { nota: novo, em } } }, { merge: true });
+          ok++;
+        } catch (err) {
+          falhas++;
+          console.error("Erro ao salvar nota", a.uid, err);
+        }
+      }));
+      alert(`${ok} nota(s) salva(s).` + (falhas ? `\n${falhas} não puderam ser salvas. Confira se as regras do Firestore foram atualizadas.` : ""));
+      showAdminProgress();
+    };
+
+    // --- Histórico do próprio aluno: todas as matérias, com prova, caderno, presença e nota ---
+    window.abrirMeuHistorico = () => {
+      const linhas = [];
+      const notas = [];
+      let totalMaterias = 0;
+      courseData.forEach(m => {
+        const mats = m.materias || [];
+        if (!mats.length) return;
+        linhas.push(`<tr><td colspan="5" style="background:var(--bg-color); font-weight:700;">${esc(m.name)}</td></tr>`);
+        mats.forEach(mat => {
+          totalMaterias++;
+          const est = provasEstado[mat.id] || {};
+          const calc = calcNotaOnline(est);
+          const nota = notaFinalMateria(mat.id, notasAluno, provasEstado);
+          if (typeof nota === "number") notas.push(nota);
+          const etapa = (reg) => reg
+            ? `${reg.acertos}/${reg.total}${reg.noPrazo ? "" : " <span title='fora do prazo' style='color:var(--danger);'>⚠</span>"}<div style="font-size:11px; color:var(--text-muted);">${esc(quandoTexto(reg.enviadoEm))}</div>`
+            : "—";
+          linhas.push(`<tr>
+            <td>${esc(mat.title)}</td>
+            <td>${etapa(est.prova)}</td>
+            <td>${etapa(est.caderno)}</td>
+            <td>${calc ? fmtNota(calc.presenca) : "—"}</td>
+            <td>${typeof nota === "number" ? `<strong>${fmtNota(nota)}</strong>${calc ? "" : `<div style="font-size:11px; color:var(--text-muted);">lançada pela coordenação</div>`}` : "—"}</td>
+          </tr>`);
+        });
+      });
+      const media = notas.length ? r2(notas.reduce((a, b) => a + b, 0) / notas.length) : null;
+      const completo = totalMaterias > 0 && notas.length === totalMaterias;
+      openModal(`
+        <h2>Meu histórico</h2>
+        <p class="modal-subtitle" style="color:var(--text-main);">${notas.length} de ${totalMaterias} matérias com nota${media !== null ? ` · média ${fmtNota(media)}` : ""}${completo ? " · 🎓 histórico completo" : ""}</p>
+        <div class="adm-wrap" style="max-height:55vh; overflow:auto;">
+          <table class="adm-table">
+            <thead><tr><th>Matéria</th><th>Prova (acertos)</th><th>Caderno (acertos)</th><th>Presença</th><th>Nota</th></tr></thead>
+            <tbody>${linhas.join("")}</tbody>
+          </table>
+        </div>
+        <p class="modal-subtitle" style="margin-top:8px;">⚠ = enviado depois do prazo de ${PRAZO_DIAS} dias.</p>
+        <div style="margin-top:10px;"><button class="btn btn-secondary" type="button" onclick="closeModal()">Fechar</button></div>
+      `, "wide");
+    };
+
+    // --- Conferência das respostas de cada aluno (todo administrador vê os alunos liberados para ele) ---
+    async function corretaDoItem(matId, tipo, it) {
+      for (let k = 0; k < it.o.length; k++) {
+        if (await hashResposta(matId, tipo, it.id, k) === it.h) return k;
+      }
+      return -1;
+    }
+
+    function etapasDoAluno(r) {
+      const out = [];
+      todasMaterias().forEach(({ mat }) => ["prova", "caderno"].forEach(tipo => {
+        const reg = r.provas?.[mat.id]?.[tipo];
+        if (reg) out.push({ mat, tipo, reg });
+      }));
+      return out;
+    }
+
+    const maxEtapaOnline = (tipo, noPrazo) => tipo === "prova" ? (noPrazo ? 7 : 6) : (noPrazo ? 1.5 : 1);
+
+    window.abrirRespostasAluno = async (uid, chave) => {
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      const etapas = etapasDoAluno(r);
+      if (!etapas.length) { alert("Este aluno ainda não enviou nenhuma prova ou caderno."); return; }
+      const sel = etapas.find(e => `${e.mat.id}|${e.tipo}` === chave) || etapas[0];
+      const rotulo = (e) => `${e.mat.title} — ${e.tipo === "prova" ? "Prova" : "Caderno"} (${e.reg.acertos}/${e.reg.total})`;
+      const opcoes = etapas.map(e => { const k = `${e.mat.id}|${e.tipo}`; return `<option value="${esc(k)}" ${e === sel ? "selected" : ""}>${esc(rotulo(e))}</option>`; }).join("");
+      const itens = sel.reg.itens || [];
+      let blocos = "";
+      for (let i = 0; i < itens.length; i++) {
+        const it = itens[i];
+        const c = await corretaDoItem(sel.mat.id, sel.tipo, it);
+        const ok = it.m === c;
+        blocos += `
+          <div style="border:1px solid var(--border-color); border-left:4px solid ${ok ? "#1a9d5a" : "var(--danger)"}; border-radius:10px; padding:12px; margin-bottom:10px;">
+            <p style="margin:0 0 8px; font-weight:600;">${i + 1}. ${esc(it.q)}</p>
+            ${it.o.map((txt, k) => {
+              const marcada = it.m === k, correta = c === k;
+              const cor = correta ? "#1a9d5a" : (marcada ? "var(--danger)" : "inherit");
+              const tag = marcada && correta ? " — ✓ marcada (correta)" : marcada ? " — ✗ marcada pelo aluno" : correta ? " — ✓ correta" : "";
+              return `<div style="font-size:13px; margin:3px 0; color:${cor}; ${marcada || correta ? "font-weight:600;" : ""}">${String.fromCharCode(65 + k)}) ${esc(txt)}${tag}</div>`;
+            }).join("")}
+          </div>`;
+      }
+      if (!blocos) blocos = `<p class="modal-subtitle">Esta etapa não tem o detalhe das questões guardado.</p>`;
+      const maxE = maxEtapaOnline(sel.tipo, sel.reg.noPrazo);
+      const pontos = r2(sel.reg.total ? sel.reg.acertos / sel.reg.total * maxE : 0);
+      openModal(`
+        <h2>Respostas — ${esc(r.nome)}</h2>
+        <p class="modal-subtitle">${esc(r.email || "")}</p>
+        <div class="form-group"><label>Prova / caderno enviado</label><select id="respSel" style="${ESTILO_CAMPO}" onchange="abrirRespostasAluno('${esc(uid)}', this.value)">${opcoes}</select></div>
+        <p class="modal-subtitle" style="color:var(--text-main);">${sel.reg.acertos} de ${sel.reg.total} acertos · ${fmtNota(pontos)} de ${fmtNota(maxE)} pontos · enviado em ${esc(quandoTexto(sel.reg.enviadoEm))} · ${sel.reg.noPrazo ? "dentro do prazo" : "<strong style='color:var(--danger);'>fora do prazo</strong>"}</p>
+        <div style="max-height:50vh; overflow:auto; padding-right:6px;">${blocos}</div>
+        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+          <button class="btn btn-secondary" type="button" onclick="exportarRespostasPdf('${esc(uid)}')">⬇ PDF das respostas</button>
+          <button class="btn btn-secondary" type="button" onclick="showAdminProgress()">Voltar</button>
+        </div>
+      `, "wide");
+    };
+
+    window.exportarRespostasPdf = async (uid) => {
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      const etapas = etapasDoAluno(r);
+      if (!etapas.length) { alert("Este aluno ainda não enviou nenhuma prova ou caderno."); return; }
+      try {
+        await garantirPdfLib();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        pdfCabecalho(doc, "Curso Básico de Teologia — Respostas do Aluno");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        doc.text(`Aluno: ${r.nome}${r.email ? " — " + r.email : ""}`, 14, 33);
+        let y = 38;
+        for (const e of etapas) {
+          const corpo = [];
+          const itens = e.reg.itens || [];
+          for (let i = 0; i < itens.length; i++) {
+            const it = itens[i];
+            const c = await corretaDoItem(e.mat.id, e.tipo, it);
+            const alt = (k) => (k >= 0 && it.o[k] !== undefined) ? `${String.fromCharCode(65 + k)}) ${it.o[k]}` : "—";
+            corpo.push([String(i + 1), it.q, alt(it.m), alt(c), it.m === c ? "Certa" : "Errada"]);
+          }
+          const titulo = `${e.mat.title} — ${e.tipo === "prova" ? "Prova" : "Caderno"}  ·  ${e.reg.acertos}/${e.reg.total} acertos  ·  enviado em ${quandoTexto(e.reg.enviadoEm)}${e.reg.noPrazo ? "" : " (fora do prazo)"}`;
+          doc.autoTable({
+            startY: y,
+            head: [[{ content: titulo, colSpan: 5, styles: { fillColor: PDF_AZUL, textColor: 255, halign: "left" } }], ["Nº", "Questão", "Resposta do aluno", "Resposta correta", "Resultado"]],
+            body: corpo,
+            theme: "grid",
+            margin: { left: 14, right: 14, bottom: 16 },
+            styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2, textColor: [40, 40, 40], lineColor: [215, 222, 238] },
+            headStyles: { fillColor: [238, 242, 251], textColor: PDF_AZUL, fontStyle: "bold" },
+            columnStyles: { 0: { cellWidth: 9, halign: "center" }, 2: { cellWidth: 42 }, 3: { cellWidth: 42 }, 4: { cellWidth: 18, halign: "center" } },
+            rowPageBreak: "avoid",
+            didParseCell: (d) => {
+              if (d.section !== "body" || d.column.index !== 4) return;
+              d.cell.styles.fontStyle = "bold";
+              d.cell.styles.textColor = d.cell.raw === "Certa" ? [0, 120, 60] : [190, 30, 30];
+            }
+          });
+          y = doc.lastAutoTable.finalY + 8;
+        }
+        pdfRodape(doc);
+        doc.save(`respostas_${nomeArquivoSeguro(r.nome)}_${dataArquivo()}.pdf`);
+      } catch (err) {
+        console.error("Erro ao gerar o PDF das respostas:", err);
+        alert("Não foi possível gerar o PDF. Verifique a conexão com a internet e tente novamente.");
+      }
+    };
+
+    // --- Editor de questões (administrador geral) ---
+    let edQuest = null; // { matId, tipo, listas: { prova: [{id,q,o[],c}], caderno: [...] } }
+
+    window.showQuestoesModal = async (matId) => {
+      if (!ehSuperAdmin()) return;
+      const mat = findMateria(matId);
+      if (!mat) return;
+      const carregar = async (tipo, lista) => {
+        const out = [];
+        for (const q of (lista || [])) {
+          let c = -1;
+          for (let k = 0; k < q.o.length; k++) {
+            if (await hashResposta(matId, tipo, q.id, k) === q.h) { c = k; break; }
+          }
+          out.push({ id: q.id, q: q.q, o: [...q.o, ...Array(NUM_OPCOES).fill("")].slice(0, NUM_OPCOES), c });
+        }
+        return out;
+      };
+      edQuest = { matId, tipo: "prova", listas: { prova: await carregar("prova", mat.provaQuestoes), caderno: await carregar("caderno", mat.cadernoQuestoes) } };
+      renderEditorQuestoes(true, false);
+    };
+
+    function renderEditorQuestoes(abrir, rolarFim) {
+      const mat = findMateria(edQuest.matId);
+      const tipo = edQuest.tipo;
+      const lista = edQuest.listas[tipo];
+      const cartoes = lista.map((q, i) => `
+        <div style="border:1px solid var(--border-color); border-radius:10px; padding:12px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong>Questão ${i + 1}</strong>
+            <button type="button" class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="edQuestDel(${i})">🗑 Remover</button>
+          </div>
+          <textarea rows="2" style="${ESTILO_CAMPO} resize:vertical;" placeholder="Enunciado da questão" oninput="edQuestTexto(${i}, 'q', this.value)">${esc(q.q)}</textarea>
+          ${q.c < 0 ? `<p id="edaviso_${i}" style="color:var(--danger); font-size:12px; margin:6px 0 0;">⚠ Marque a alternativa correta.</p>` : ""}
+          ${q.o.map((txt, k) => `<div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+            <input type="radio" name="edc_${i}" ${q.c === k ? "checked" : ""} onchange="edQuestCorreta(${i}, ${k})" title="Marcar como resposta correta">
+            <span style="width:18px; font-weight:600;">${String.fromCharCode(65 + k)}</span>
+            <input type="text" value="${esc(txt)}" placeholder="Alternativa ${String.fromCharCode(65 + k)}${k >= 2 ? " (opcional)" : ""}" style="${ESTILO_CAMPO} padding:8px;" oninput="edQuestTexto(${i}, ${k}, this.value)">
+          </div>`).join("")}
+        </div>`).join("");
+      const painelColar = `
+        <p class="modal-subtitle" style="margin:0 0 8px;">Cole as questões de <strong>${tipo === "prova" ? "Prova" : "Caderno"}</strong>. Formato aceito (enunciado numerado, alternativas A a E e a resposta):</p>
+        <pre style="font-size:12px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:8px; padding:8px; margin:0 0 8px; white-space:pre-wrap;">1) Quem foi o primeiro rei de Israel?
+A) Davi
+B) Saul
+C) Salomão
+Resposta: B</pre>
+        <p class="modal-subtitle" style="margin:0 0 8px;">Se o gabarito estiver numa lista no final (ex.: "Gabarito: 1-B 2-C 3-A"), também é reconhecido. Sem gabarito, você marca a correta depois, em cada questão.</p>
+        <textarea id="edColarTexto" rows="12" style="${ESTILO_CAMPO} resize:vertical;" placeholder="Cole aqui as questões..."></textarea>
+        <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-top:8px; cursor:pointer;"><input type="checkbox" id="edColarSubstituir"> Substituir as questões atuais desta aba (senão, as novas entram no final)</label>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button type="button" class="btn btn-primary" style="flex:1;" onclick="edQuestColarConfirmar()">Converter e adicionar</button>
+          <button type="button" class="btn btn-secondary" onclick="edQuestColarCancelar()">Cancelar</button>
+        </div>`;
+      const html = `
+        <h2>Questões — ${esc(mat.title)}</h2>
+        <p class="modal-subtitle">Múltipla escolha com correção automática. A prova online só aparece para os alunos quando a prova e o caderno tiverem ao menos 1 questão. Marque o botão ao lado da alternativa correta.</p>
+        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" class="btn ${tipo === "prova" ? "btn-primary" : "btn-secondary"}" onclick="edQuestTab('prova')">Prova — 7,0 (${edQuest.listas.prova.length})</button>
+          <button type="button" class="btn ${tipo === "caderno" ? "btn-primary" : "btn-secondary"}" onclick="edQuestTab('caderno')">Caderno — 1,5 (${edQuest.listas.caderno.length})</button>
+        </div>
+        ${edQuest.aviso ? `<p class="modal-subtitle" style="margin:0 0 10px; color:var(--text-main);">${esc(edQuest.aviso)}</p>` : ""}
+        ${edQuest.colar ? painelColar : `
+        <div id="edQuestLista" style="max-height:50vh; overflow:auto; padding-right:6px;">${cartoes || `<p class="modal-subtitle">Nenhuma questão ainda.</p>`}</div>
+        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" onclick="edQuestColarAbrir()">📋 Colar questões</button>
+          <button type="button" class="btn btn-secondary" onclick="edQuestAdd()">+ Adicionar questão</button>
+          <button type="button" class="btn btn-primary" style="flex:1;" onclick="salvarQuestoes()">Salvar questões</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+        </div>`}`;
+      if (abrir) openModal(html, "wide"); else $("modalContent").innerHTML = html;
+      if (rolarFim) { const el = $("edQuestLista"); if (el) el.scrollTop = el.scrollHeight; }
+    }
+
+    window.edQuestTab = (tipo) => { edQuest.tipo = tipo; edQuest.colar = false; renderEditorQuestoes(false, false); };
+    window.edQuestAdd = () => {
+      edQuest.listas[edQuest.tipo].push({ id: "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), q: "", o: Array(NUM_OPCOES).fill(""), c: -1 });
+      renderEditorQuestoes(false, true);
+    };
+    window.edQuestDel = (i) => {
+      if (!confirm("Remover esta questão?")) return;
+      edQuest.listas[edQuest.tipo].splice(i, 1);
+      renderEditorQuestoes(false, false);
+    };
+    window.edQuestTexto = (i, campo, valor) => {
+      const q = edQuest.listas[edQuest.tipo][i];
+      if (!q) return;
+      if (campo === "q") q.q = valor; else q.o[campo] = valor;
+    };
+    window.edQuestCorreta = (i, k) => {
+      const q = edQuest.listas[edQuest.tipo][i];
+      if (q) q.c = k;
+      const av = $("edaviso_" + i);
+      if (av) av.style.display = "none";
+    };
+
+    // Converte texto colado em questões. Reconhece "1) enunciado", alternativas "A) ...",
+    // "Resposta: B" logo após a questão e listas finais do tipo "Gabarito: 1-B 2-C 3-A".
+    function parseQuestoesTexto(texto) {
+      const linhas = String(texto || "").replace(/\r/g, "").split("\n");
+      const reQuestao1 = /^\s*quest[aã]o\s*(\d{1,3})\s*[\.\)\-–:]?\s*(.*)$/i;
+      const reQuestao2 = /^\s*(\d{1,3})\s*[\.\)\-–:]\s*(.*)$/;
+      const reAlt = /^\s*(\*?)\s*\(?([A-Ea-e])\s*[\)\.\-–:]\s*(.*)$/;
+      const reResposta = /^\s*(?:resposta(?:\s+correta)?|gabarito|correta|alternativa\s+correta|resp\.?)\s*[:\-–=]?\s*\(?([A-Ea-e])\b.*$/i;
+      const rePares = /(\d{1,3})\s*[\-–:\.\)]?\s*([A-Ea-e])\b/g;
+      const lista = [];
+      const gabarito = {};
+      let atual = null, ultimo = null, modoGabarito = false, extras = 0;
+      const fechar = () => { if (atual) { lista.push(atual); atual = null; } };
+      const lerPares = (txt) => { let m; rePares.lastIndex = 0; while ((m = rePares.exec(txt))) gabarito[Number(m[1])] = m[2].toUpperCase().charCodeAt(0) - 65; };
+
+      for (const bruta of linhas) {
+        const linha = bruta.trim();
+        if (!linha) continue;
+        if (modoGabarito) { lerPares(linha); continue; }
+        let m = linha.match(reResposta);
+        if (m && atual) { atual.c = m[1].toUpperCase().charCodeAt(0) - 65; ultimo = null; continue; }
+        if (/^gabarito\b/i.test(linha)) { fechar(); modoGabarito = true; lerPares(linha); continue; }
+        m = linha.match(reQuestao1) || linha.match(reQuestao2);
+        if (m) { fechar(); atual = { num: Number(m[1]), q: m[2].trim(), o: Array(NUM_OPCOES).fill(""), c: -1 }; ultimo = "q"; continue; }
+        m = atual && linha.match(reAlt);
+        if (m) {
+          const idx = m[2].toUpperCase().charCodeAt(0) - 65;
+          let txt = m[3].trim();
+          let marcada = m[1] === "*";
+          const fim = txt.match(/\s*(\*|✓|✔|\(correta\)|\[correta\])\s*$/i);
+          if (fim) { marcada = true; txt = txt.slice(0, fim.index).trim(); }
+          if (idx < NUM_OPCOES) { atual.o[idx] = txt; ultimo = idx; if (marcada) atual.c = idx; } else extras++;
+          continue;
+        }
+        if (atual) {
+          if (ultimo === "q") atual.q += (atual.q ? " " : "") + linha;
+          else if (typeof ultimo === "number") atual.o[ultimo] += (atual.o[ultimo] ? " " : "") + linha;
+        }
+      }
+      fechar();
+      lista.forEach((q, i) => {
+        const g = gabarito[q.num] !== undefined ? gabarito[q.num] : gabarito[i + 1];
+        if (g !== undefined && g < NUM_OPCOES) q.c = g;
+      });
+      const questoes = lista.map(q => ({
+        id: "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        q: q.q.trim(), o: q.o.map(x => x.trim()), c: q.c
+      }));
+      return { questoes, extras };
+    }
+
+    window.edQuestColarAbrir = () => { edQuest.colar = true; renderEditorQuestoes(false, false); };
+    window.edQuestColarCancelar = () => { edQuest.colar = false; renderEditorQuestoes(false, false); };
+    window.edQuestColarConfirmar = () => {
+      const { questoes, extras } = parseQuestoesTexto($("edColarTexto").value);
+      if (!questoes.length) { alert("Não encontrei questões. Confira o formato do exemplo: enunciado numerado (1), 2)...) e alternativas começando com A), B), C)..."); return; }
+      const tipo = edQuest.tipo;
+      edQuest.listas[tipo] = $("edColarSubstituir").checked ? questoes : [...edQuest.listas[tipo], ...questoes];
+      const sem = questoes.filter(q => q.c < 0).length;
+      const incompletas = questoes.filter(q => q.o.filter(Boolean).length < 2 || !q.q).length;
+      edQuest.aviso = `${questoes.length} questão(ões) convertida(s). ` +
+        (sem ? `${sem} sem gabarito: marque a alternativa correta em cada uma. ` : "Todas com gabarito. ") +
+        (incompletas ? `${incompletas} com enunciado ou alternativas incompletas: confira. ` : "") +
+        (extras ? `${extras} alternativa(s) além da E foram ignoradas. ` : "") +
+        "Confira tudo e clique em Salvar questões.";
+      edQuest.colar = false;
+      renderEditorQuestoes(false, false);
+    };
+
+    window.salvarQuestoes = async () => {
+      const mat = findMateria(edQuest.matId);
+      if (!mat) return;
+      const saida = {};
+      for (const tipo of ["prova", "caderno"]) {
+        const lista = [];
+        const origem = edQuest.listas[tipo];
+        for (let i = 0; i < origem.length; i++) {
+          const q = origem[i];
+          const rotulo = `${tipo === "prova" ? "Prova" : "Caderno"}, questão ${i + 1}`;
+          const enun = q.q.trim();
+          const opcoes = q.o.map((t, k) => ({ t: t.trim(), k })).filter(x => x.t);
+          if (!enun) { alert(`${rotulo}: escreva o enunciado.`); return; }
+          if (opcoes.length < 2) { alert(`${rotulo}: informe ao menos 2 alternativas.`); return; }
+          const novoC = opcoes.findIndex(x => x.k === q.c);
+          if (novoC < 0) { alert(`${rotulo}: marque como correta uma alternativa que esteja preenchida.`); return; }
+          lista.push({ id: q.id, q: enun, o: opcoes.map(x => x.t), h: await hashResposta(edQuest.matId, tipo, q.id, novoC) });
+        }
+        saida[tipo] = lista;
+      }
+      mat.provaQuestoes = saida.prova;
+      mat.cadernoQuestoes = saida.caderno;
+      await saveCourseData();
+      closeModal();
+    };
+
+    // ===== Notas das provas =====
+    // Ficam em acessos/{uid}.notas = { idDaMateria: { nota, em } }. O administrador lança; o aluno só vê a própria nota.
+    const fmtNota = (n) => Number(n).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const ESTILO_CAMPO = "width:100%; padding:12px; border-radius:8px; border:1px solid var(--border-color); background-color:var(--bg-color); color:var(--text-main); font-size:14px;";
+
+    function numeroBR(x) {
+      x = String(x).trim();
+      if (x.includes(",")) x = x.replace(/\./g, "").replace(",", ".");
+      return Number(x);
+    }
+
+    // Aceita "8,5", "8.5", "8 / 10", "8,00 / 10" (pontuação do Google Forms) e "85%". Resultado sempre na escala 0 a 10.
+    // Retorna null se estiver vazio, { nota } se válido, { erro: true } se inválido.
+    function lerNotaTexto(txt) {
+      const t = String(txt ?? "").trim();
+      if (!t) return null;
+      let nota = NaN;
+      let m = t.match(/^([\d.,]+)\s*\/\s*([\d.,]+)$/);
+      if (m) {
+        const pontos = numeroBR(m[1]), total = numeroBR(m[2]);
+        if (total > 0 && pontos >= 0 && pontos <= total) nota = pontos / total * 10;
+      } else if ((m = t.match(/^([\d.,]+)\s*%$/))) {
+        const pct = numeroBR(m[1]);
+        if (pct >= 0 && pct <= 100) nota = pct / 10;
+      } else if (/^[\d.,]+$/.test(t)) {
+        const n = numeroBR(t);
+        if (n >= 0 && n <= 10) nota = n;
+      }
+      if (!isFinite(nota)) return { erro: true };
+      return { nota: Math.round(nota * 100) / 100 };
+    }
+
+    function todasMaterias() {
+      return courseData.flatMap(m => (m.materias || []).map(mat => ({ mat, modulo: m })));
+    }
+
+    // --- Lançamento manual ---
+    window.editarNotas = (uid) => {
+      if (!ehSuperAdmin()) return;
+      const r = adminRows.find(x => x.uid === uid);
+      if (!r) return;
+      const blocos = courseData.map(m => `
+        <div style="font-weight:600; margin:14px 0 6px;">${esc(m.name)}</div>
+        ${(m.materias || []).map(mat => {
+          const n = r.notas?.[mat.id]?.nota;
+          const on = calcNotaOnline(r.provas?.[mat.id]);
+          if (on) return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
+            <span style="font-size:13px;">${esc(mat.title)}</span>
+            <span style="font-size:12px; color:var(--text-muted);"><strong style="color:var(--text-main);">${fmtNota(on.nota)}</strong> (prova online)</span>
+          </div>`;
+          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
+            <label for="nota_${esc(mat.id)}" style="font-size:13px;">${esc(mat.title)}</label>
+            <input type="text" inputmode="decimal" id="nota_${esc(mat.id)}" value="${typeof n === "number" ? esc(String(n).replace(".", ",")) : ""}" placeholder="0 a 10" style="${ESTILO_CAMPO} width:90px; padding:8px; text-align:center;">
+          </div>`;
+        }).join("")}`).join("");
+      openModal(`
+        <h2>Notas das provas</h2>
+        <p class="modal-subtitle">${esc(r.nome)}${r.email && r.nome !== r.email ? " — " + esc(r.email) : ""}</p>
+        <form id="formNotas">
+          <div style="max-height:55vh; overflow:auto; padding-right:6px;">${blocos}</div>
+          <p class="modal-subtitle" style="margin:10px 0 0;">Use notas de 0 a 10 (vírgula ou ponto). Deixe em branco para não ter nota.</p>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn btn-primary" type="submit" style="flex:1;">Salvar notas</button>
+            <button class="btn btn-secondary" type="button" onclick="showAdminProgress()">Voltar</button>
+          </div>
+        </form>
+      `);
+      $("formNotas").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const patch = {};
+        const em = Date.now();
+        for (const { mat } of todasMaterias()) {
+          const el = $("nota_" + mat.id);
+          if (!el) continue;
+          const lido = lerNotaTexto(el.value);
+          if (lido && lido.erro) { alert(`Nota inválida em ${mat.title}: use um valor de 0 a 10.`); return; }
+          const antes = r.notas?.[mat.id]?.nota;
+          const antesVal = typeof antes === "number" ? antes : null;
+          const novo = lido ? lido.nota : null;
+          if (novo !== antesVal) patch[mat.id] = { nota: novo, em };
+        }
+        if (!Object.keys(patch).length) { showAdminProgress(); return; }
+        try {
+          await setDoc(doc(db, "acessos", uid), { ...(r.acesso ? {} : { email: r.email }), notas: patch }, { merge: true });
+          showAdminProgress();
+        } catch (err) {
+          console.error("Erro ao salvar as notas:", err);
+          alert("Não foi possível salvar as notas. Confira se as regras do Firestore foram atualizadas.");
+        }
+      });
+    };
+
     window.filtrarAdmin = (q) => renderAdminRows(q);
 
     window.toggleAdminDetail = (uid) => {
@@ -1671,20 +2483,45 @@
 
     function renderAdminRows(q) {
       const term = (q || "").toLowerCase().trim();
-      const rows = adminRows.filter(r => !term || r.nome.toLowerCase().includes(term) || r.email.toLowerCase().includes(term)
+      const rows = adminRows.filter(r => mostrarRemovidos || !r.removido).filter(r => !term || r.nome.toLowerCase().includes(term) || r.email.toLowerCase().includes(term)
         || (r.info && [r.info.igreja, r.info.cargo, r.info.tel].some(v => (v || "").toLowerCase().includes(term))));
       if (!rows.length) {
-        $("admBody").innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>`;
+        $("admBody").innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);">Nenhum aluno encontrado.</td></tr>`;
         return;
       }
       const souGeral = ehSuperAdmin();
       $("admBody").innerHTML = rows.map(r => {
+        if (r.removido) {
+          const quandoRem = r.acesso?.removidoEm ? new Date(r.acesso.removidoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
+          return `
+          <tr style="opacity:0.6;">
+            <td><strong>${esc(r.nome)}</strong> <span class="role-badge">Removido</span>${r.email && r.nome !== r.email ? `<br><span style="color:var(--text-muted);">${esc(r.email)}</span>` : ""}</td>
+            <td colspan="5"><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px;" onclick="reativarAluno('${esc(r.uid)}')">↩ Reativar</button></td>
+            <td>${quandoRem}</td>
+          </tr>`;
+        }
         let detalhe = "";
         courseData.forEach(m => m.materias?.forEach(mat => mat.lessons?.forEach(l => {
           const v = r.aulas[l.id] || 0;
           if (v > 0) detalhe += `${esc(mat.title)} — ${esc(l.name)}: <strong>${v}%</strong><br>`;
         })));
         if (!detalhe) detalhe = "Nenhuma aula iniciada.";
+        let detNotas = "";
+        courseData.forEach(m => m.materias?.forEach(mat => {
+          const est = r.provas?.[mat.id];
+          const on = calcNotaOnline(est);
+          const n = r.notasFinais?.[mat.id];
+          if (on) {
+            const p = est.prova, c = est.caderno;
+            detNotas += `${esc(mat.title)}: <strong>${fmtNota(on.nota)}</strong> — prova ${p.acertos}/${p.total}${p.noPrazo ? "" : " (fora do prazo)"}, caderno ${c.acertos}/${c.total}${c.noPrazo ? "" : " (fora do prazo)"}<br>`;
+          } else if (est && (est.prova || est.caderno)) {
+            const p = est.prova, c = est.caderno;
+            detNotas += `${esc(mat.title)}: ${p ? `prova ${p.acertos}/${p.total}` : "prova pendente"}, ${c ? `caderno ${c.acertos}/${c.total}` : "caderno pendente"}<br>`;
+          } else if (typeof n === "number") {
+            detNotas += `${esc(mat.title)}: <strong>${fmtNota(n)}</strong><br>`;
+          }
+        }));
+        if (detNotas) detalhe += `<br><strong>Notas das provas</strong><br>${detNotas}`;
         const quando = r.ultimo ? new Date(r.ultimo).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
         return `
           <tr class="adm-row" onclick="toggleAdminDetail('${esc(r.uid)}')">
@@ -1692,10 +2529,11 @@
             <td><strong>${r.geral}%</strong><div class="adm-bar"><div style="width:${r.geral}%"></div></div></td>
             <td>${r.concluidas}</td>
             <td>${r.andamento}</td>
-            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Editar</button> <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAlunoPdf('${esc(r.uid)}')">⬇ PDF</button> <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAluno('${esc(r.uid)}')">⬇ CSV</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button>` : ""}</td>
+            <td>${r.mediaNotas != null ? `<strong>${fmtNota(r.mediaNotas)}</strong><div style="font-size:11px; color:var(--text-muted);">média · ${r.qtdNotas} matéria(s)</div>` : "—"}${r.provasParciais ? `<div style="font-size:11px; color:var(--text-muted);">⏳ ${r.provasParciais} em andamento</div>` : ""}</td>
+            <td>${esc(textoAcesso(r.acesso))}${souGeral ? `<br><span style="color:var(--text-muted);">${esc(textoVisivel(r.visivelPara))}</span>` : ""}<br><button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarAcesso('${esc(r.uid)}')">Editar</button> ${souGeral ? `<button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); editarNotas('${esc(r.uid)}')">📝 Notas</button>` : ""}${etapasDoAluno(r).length ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); abrirRespostasAluno('${esc(r.uid)}')">🔍 Respostas</button>` : ""} <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAlunoPdf('${esc(r.uid)}')">⬇ PDF</button> <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); exportarAluno('${esc(r.uid)}')">⬇ CSV</button>${souGeral ? ` <button class="btn btn-secondary" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); alternarAdmin('${esc(r.uid)}')">${adminsMap[r.uid] ? "Remover admin" : "Tornar admin"}</button> <button class="btn btn-danger" style="padding:3px 8px; font-size:11px; margin-top:4px;" onclick="event.stopPropagation(); excluirAluno('${esc(r.uid)}')">🗑 Excluir</button>` : ""}</td>
             <td>${quando}</td>
           </tr>
-          <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="6" class="adm-detail">${detalhe}</td></tr>`;
+          <tr id="det-${esc(r.uid)}" style="display:none;"><td colspan="7" class="adm-detail">${detalhe}</td></tr>`;
       }).join("");
     }
 
@@ -1763,11 +2601,16 @@
 
     // Acesso definido pelo administrador para este aluno (null = padrão: módulos em sequência)
     let acessoAluno = null;
+    let notasAluno = {};
+    let provasEstado = {};          // progresso das provas online: { idMateria: { liberadoEm, prova, caderno } }
+    let provasCarregadas = false;   // só permite enviar prova depois de ler o histórico na nuvem
 
     async function loadAcessoFromCloud() {
       acessoAluno = null;
+      notasAluno = {};
       try {
         const snap = await getDoc(doc(db, "acessos", auth.currentUser.uid));
+        if (snap.exists()) notasAluno = snap.data().notas || {};
         if (snap.exists() && snap.data().modo && snap.data().modo !== "padrao") acessoAluno = snap.data();
       } catch (err) {
         console.error("Erro ao carregar o acesso do aluno:", err);
@@ -1915,11 +2758,19 @@
 
           let provaBtnHtml;
           if (isAdmin) {
-            provaBtnHtml = `<button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal('${mat.id}')">⚙️ Prova${mat.provaUrl ? ' ✓' : ''}</button>`;
+            provaBtnHtml = `<span style="display:flex; align-items:center; gap:6px;"><button class="edit-btn" style="white-space:nowrap;" onclick="showProvaModal('${mat.id}')">⚙️ Link da prova${mat.provaUrl ? ' ✓' : ''}</button>${ehSuperAdmin() ? `<button class="edit-btn" style="white-space:nowrap;" onclick="showQuestoesModal('${mat.id}')">⚙️ Questões${provaOnlineAtiva(mat) ? ' ✓' : ''}</button>` : ''}</span>`;
           } else {
-            const liberada = Boolean(mat.provaUrl) && (ehAdmin() || isMateriaCompleted(mat));
-            const textoProva = mat.provaUrl ? (liberada ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
-            provaBtnHtml = `<button class="action-btn ${liberada ? 'available' : ''}" style="white-space:nowrap;" onclick="abrirProvaAluno('${mat.id}')">${textoProva}</button>`;
+            const notaMat = notaFinalMateria(mat.id, notasAluno, provasEstado);
+            const notaHtml = typeof notaMat === "number" ? `<span class="materia-count" style="font-weight:700; color:var(--text-main);">Nota: ${fmtNota(notaMat)}</span>` : "";
+            if (provaOnlineAtiva(mat)) {
+              provaBtnHtml = provaOnlineHtml(mat, notaHtml);
+            } else if (!mat.provaUrl && typeof notaMat === "number") {
+              provaBtnHtml = `<span style="display:flex; align-items:center; gap:8px;">${notaHtml}</span>`;
+            } else {
+              const liberada = Boolean(mat.provaUrl) && (ehAdmin() || isMateriaCompleted(mat));
+              const textoProva = mat.provaUrl ? (liberada ? '📝 Fazer Prova' : '🔒 Prova') : '📝 Prova';
+              provaBtnHtml = `<span style="display:flex; align-items:center; gap:8px;">${notaHtml}<button class="action-btn ${liberada ? 'available' : ''}" style="white-space:nowrap;" onclick="abrirProvaAluno('${mat.id}')">${textoProva}</button></span>`;
+            }
           }
 
           const matAberta = search ? true : materiasAbertas.has(mat.id);
